@@ -1,0 +1,31 @@
+{
+  "id": "./",
+  "name": "Lexi — Học từ vựng tiếng Anh",
+  "short_name": "Lexi",
+  "description": "Học từ vựng tiếng Anh theo chủ đề, ôn tập bằng thẻ và luyện trí nhớ mỗi ngày.",
+  "lang": "vi",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f8faf6",
+  "theme_color": "#7357e8",
+  "categories": [
+    "education"
+  ],
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
