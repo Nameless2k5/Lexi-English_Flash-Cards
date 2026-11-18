@@ -44,5 +44,5 @@ assert.ok(sandbox.dictionaryResults().some(w=>w.word==='stringent'),'search incl
 const html=fs.readFileSync(path.join(root,'public/index.html'),'utf8'),sw=fs.readFileSync(path.join(root,'public/sw.js'),'utf8');
 assert.ok(html.indexOf('src="toeic.js"')>html.indexOf('src="data.js"'));
 assert.ok(html.indexOf('src="toeic.js"')<html.indexOf('src="app.js"'));
-assert.ok(sw.includes("'./toeic.js'"));assert.ok(sw.includes('lexi-v16-avatar-crop'));
+assert.ok(sw.includes("'./toeic.js'"));assert.ok(sw.includes('lexi-v17-avatar-frame'));
 console.log('PASS: 100 TOEIC entries, 260 stable IDs, cloud catalog, all cloze questions, target/search filters and offline assets');

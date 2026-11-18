@@ -123,10 +123,11 @@
     $('#connection-status').textContent=offlineReady?'Sẵn sàng học offline':navigator.onLine?'Lexi · A2–C1':'Đang offline';
   }
   function pageHead(eyebrow,title,subtitle,aside='') {return '<div class="page-head"><div><div class="eyebrow">'+eyebrow+'</div><h1>'+title+'</h1><p>'+subtitle+'</p></div>'+aside+'</div>';}
-  function paintIdentity(){
+  function paintIdentity(profile=state.profile){
     const api=window.LEXI_PROFILE;if(!api)return;
-    $$('[data-profile-avatar]').forEach(el=>el.innerHTML=api.avatar(state.profile,36));
-    $$('[data-profile-name]').forEach(el=>el.textContent=state.profile.nickname||'Hồ sơ');
+    const current=api.validate(profile),markup=api.avatar(current,36);
+    $$('[data-profile-avatar]').forEach(el=>{if(el.innerHTML!==markup)el.innerHTML=markup;});
+    $$('[data-profile-name]').forEach(el=>el.textContent=current.nickname||'Hồ sơ');
   }
   function paintProfileAccount(info=protection?.snapshot()){
     const el=$('[data-profile-account]');if(!el)return;
@@ -135,7 +136,8 @@
   function profileFeedback(message,error=false){const el=$('#profile-feedback');if(el){el.textContent=message;el.dataset.error=String(error);}}
   function paintProfileDraft(){
     const api=window.LEXI_PROFILE;if(!api||!profileDraft)return;
-    const preview=$('#profile-preview');if(preview)preview.innerHTML=api.avatar(profileDraft,112);
+    if(route().name==='profile')paintIdentity(profileDraft);
+    const preview=$('#profile-preview'),markup=api.avatar(profileDraft,112);if(preview&&preview.innerHTML!==markup)preview.innerHTML=markup;
     const name=$('#profile-preview-name');if(name)name.textContent=api.cleanName(profileDraft.nickname)||'Một người bạn của Lexi';
     const count=$('#nickname-count');if(count)count.textContent=Array.from(api.cleanName(profileDraft.nickname)).length+'/24 ký tự';
     $$('[data-profile-preset]').forEach(b=>{const on=!profileDraft.image&&b.dataset.profilePreset===profileDraft.avatar;b.classList.toggle('selected',on);b.setAttribute('aria-pressed',String(on));});
@@ -147,7 +149,7 @@
     const api=window.LEXI_PROFILE;if(!api){main.innerHTML=pageHead('YOUR LITTLE CORNER','Chưa tải được hồ sơ.','Hãy mở lại Lexi khi có kết nối mạng để nhận đầy đủ bản cập nhật.');return;}
     if(!profileDraft)profileDraft=api.validate(state.profile);
     main.innerHTML=pageHead('MAKE THIS SPACE YOURS','Một góc nhỏ, rất là bạn.','Đặt biệt danh, chọn một gương mặt thân quen và làm mới không gian học mỗi ngày.')+
-      '<div class="profile-layout"><section class="profile-editor panel"><form id="profile-form"><div class="profile-preview"><div id="profile-preview"></div><span class="eyebrow">YOUR WORDS. YOUR WORLD.</span><h2 id="profile-preview-name"></h2><p>Đây là cách bạn xuất hiện trong Lexi.</p></div><div class="profile-field"><label for="profile-nickname">Bạn muốn Lexi gọi mình là gì?</label><input id="profile-nickname" name="nickname" type="text" maxlength="48" autocomplete="nickname" placeholder="Ví dụ: Mèo chăm học" value="'+esc(profileDraft.nickname)+'" aria-describedby="nickname-count"><div class="profile-field-help"><span>Biệt danh trong Lexi · có thể để trống để dùng mặc định</span><span id="nickname-count"></span></div></div>'+
+      '<div class="profile-layout"><section class="profile-editor panel"><form id="profile-form"><div class="profile-preview"><div id="profile-preview"></div><span class="eyebrow">YOUR WORDS. YOUR WORLD.</span><h2 id="profile-preview-name"></h2><p>Xem trước thay đổi. Bấm “Lưu hồ sơ” để áp dụng.</p></div><div class="profile-field"><label for="profile-nickname">Bạn muốn Lexi gọi mình là gì?</label><input id="profile-nickname" name="nickname" type="text" maxlength="48" autocomplete="nickname" placeholder="Ví dụ: Mèo chăm học" value="'+esc(profileDraft.nickname)+'" aria-describedby="nickname-count"><div class="profile-field-help"><span>Biệt danh trong Lexi · có thể để trống để dùng mặc định</span><span id="nickname-count"></span></div></div>'+
       '<fieldset class="profile-choice"><legend>Chọn avatar của bạn</legend><div class="avatar-grid">'+api.avatars.map(([id,emoji,label])=>'<button type="button" class="avatar-option" data-profile-preset="'+id+'" aria-label="Avatar '+esc(label)+'" aria-pressed="false"><span aria-hidden="true">'+emoji+'</span></button>').join('')+'</div></fieldset>'+
       '<fieldset class="profile-choice"><legend>Một màu yêu thích</legend><div class="avatar-colors">'+api.colors.map(([id,hex,label])=>'<button type="button" class="avatar-color" style="--swatch:'+hex+'" data-profile-color="'+id+'" aria-label="'+esc(label)+'" aria-pressed="false"></button>').join('')+'</div></fieldset>'+
       '<div class="profile-photo-actions"><button type="button" class="btn btn-outline" data-action="profile-upload">'+icon('upload')+' Chọn ảnh từ máy</button><button type="button" class="btn btn-ghost" data-action="profile-remove-photo" hidden>Bỏ ảnh đã chọn</button><input id="profile-photo" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" hidden></div><p class="profile-photo-note">Ảnh tối đa 8 MB. Kéo, thu phóng và xoay để chọn vùng ảnh trước khi lưu. Bạn có thể dùng avatar có sẵn bất cứ lúc nào.</p><p id="profile-feedback" class="profile-feedback" role="status" aria-live="polite"></p><div class="profile-save-row"><button class="btn btn-primary" type="submit" data-profile-save>Lưu hồ sơ</button><button class="btn btn-ghost" type="button" data-action="profile-reset">Bỏ thay đổi</button></div></form></section>'+

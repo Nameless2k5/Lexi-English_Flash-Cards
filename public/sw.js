@@ -1,6 +1,6 @@
 /* Lexi PWA cache: bump CACHE_NAME when publishing a new shell/data version. */
 'use strict';
-const CACHE_NAME = 'lexi-v16-avatar-crop';
+const CACHE_NAME = 'lexi-v17-avatar-frame';
 const BASE_URL = new URL('./', self.location.href);
 const SHELL_PATHS = [
   './', './index.html', './styles.css', './app.js', './data.js', './toeic.js', './synonyms.js', './profile.js', './avatar-crop.js', './backup.js',

@@ -115,3 +115,7 @@ Hồ sơ nằm trong state.profile bên cạnh tiến độ v1, được đưa v
 Chọn ảnh mở dialog riêng: kéo ảnh bằng chuột/ngón tay, hai ngón pan/zoom trên thiết bị hỗ trợ Pointer Events, lăn chuột hoặc thanh thu phóng 100–400%, xoay trái/phải từng 90°, đặt lại, xem trước. Phím mũi tên di chuyển ảnh (Shift để di chuyển nhanh), +/- thu phóng; Escape hoặc Hủy giữ avatar cũ. Bấm Dùng ảnh này rồi Lưu hồ sơ để áp dụng. Quay khỏi trang hủy tác vụ ảnh đang chờ; kết quả giải mã cũ không được tự mở lại dialog.
 
 public/avatar-crop.js dùng cùng phép biến đổi chuẩn hóa cho khung, preview và JPEG xuất ra; giới hạn pan để tránh hở viền. Canvas render gộp bằng requestAnimationFrame, chỉ giữ ảnh gốc trong bộ nhớ khi căn chỉnh, thu hồi object URL khi đóng. Không lưu hoặc gửi ảnh gốc lên server; chỉ avatar JPEG cuối cùng tham gia cơ chế sao lưu hiện có. Không đổi schema hồ sơ hoặc dữ liệu tiến độ. tests/avatar-crop.cjs kiểm tra hướng ảnh, giới hạn pan, tâm pinch và preview/export trên nhiều tỉ lệ ảnh.
+
+## Avatar nhất quán giữa các kích thước
+
+Trong trang Hồ sơ, avatar góc trên và avatar lớn cùng hiển thị profileDraft đang xem trước. Lưu hồ sơ mới cập nhật state và sao lưu; rời trang trước khi lưu dùng lại hồ sơ đã lưu. Hai kích thước dùng chung khung vuông, bo góc theo phần trăm và object-fit:contain để hiển thị toàn bộ vùng ảnh đã chọn. Không dựng lại ảnh nếu markup không đổi. Đã kiểm tra cùng src, tỉ lệ khung, bo góc trên desktop/mobile, cả trước khi lưu và sau tải lại.
