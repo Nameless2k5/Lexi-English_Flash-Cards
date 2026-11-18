@@ -1,6 +1,6 @@
 /* Lexi PWA cache: bump CACHE_NAME when publishing a new shell/data version. */
 'use strict';
-const CACHE_NAME = 'lexi-v9-backup';
+const CACHE_NAME = 'lexi-v10-account';
 const BASE_URL = new URL('./', self.location.href);
 const SHELL_PATHS = [
   './', './index.html', './styles.css', './app.js', './data.js', './synonyms.js', './backup.js',

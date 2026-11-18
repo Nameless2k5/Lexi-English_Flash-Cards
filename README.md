@@ -89,3 +89,7 @@ Nguồn tra cứu để đối chiếu các trường hợp khó (các ví dụ 
 - https://www.oxfordlearnersdictionaries.com/definition/english/rapport
 - https://www.oxfordlearnersdictionaries.com/us/definition/english/warranty
 - https://www.cancer.gov/publications/dictionaries/cancer-terms/def/sign
+
+## Đăng xuất và đổi tài khoản
+
+Trong Cài đặt hoặc Tiến độ, nút Đăng xuất xuất hiện khi đã xác định được tài khoản. Điều hướng top-level qua /signout-with-chatgpt của Sites; không tự xử lý cookie hoặc mật khẩu. App dừng sao lưu trước khi rời trang, giữ tiến độ local và bản sao cloud, cảnh báo nếu còn thay đổi chưa xác nhận. Khi quay lại có nút Đăng nhập bằng ChatGPT; dùng tài khoản mới cần chọn rõ có muốn chuyển bản local hay khôi phục bản tài khoản. Nếu nhà cung cấp đăng nhập tự chọn tài khoản cũ, đổi tài khoản ChatGPT trong cùng trình duyệt trước khi thử lại.

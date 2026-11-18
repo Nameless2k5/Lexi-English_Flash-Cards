@@ -263,6 +263,7 @@
   }
   function importData(){const input=document.createElement('input');input.type='file';input.accept='.json,application/json';input.addEventListener('change',async()=>{const f=input.files?.[0];if(!f)return;if(f.size>2e6){toast('Tệp quá lớn. Hãy chọn bản sao JSON do Lexi xuất.');return;}try{const raw=JSON.parse(await f.text());if(raw.app!=='lexi')throw new Error();const valid=validate(raw);if(!confirm('Thay thế tiến độ trên thiết bị này bằng bản sao đã chọn?'))return;state=valid;initialReadFailed=false;save();if(settings.open)settings.close();render();toast('Đã khôi phục tiến độ học.');}catch{toast('Bản sao không hợp lệ. Hãy dùng tệp JSON được xuất từ Lexi.');}});input.click();}
   document.addEventListener('click',async e=>{
+    if(e.target.closest('a[data-backup-signout]')){if(!protection?.prepareSignOut())e.preventDefault();return;}
     const button=e.target.closest('button');if(!button)return;
     const d=button.dataset;
     if(d.backup){
@@ -341,8 +342,10 @@
     window.addEventListener('pagehide',()=>protection.sync());
   }
   const resumeBackup=new URLSearchParams(location.search).get('backup')==='connect';
-  render();prepareOffline();protection?.start(resumeBackup);
-  if(resumeBackup){
+  const accountReturn=new URLSearchParams(location.search).get('backup')==='account';
+  render();prepareOffline();
+  if(accountReturn){protection?.signedOut();protection?.checkPersistence();}else protection?.start(resumeBackup);
+  if(resumeBackup||accountReturn){
     showSettings();history.replaceState(null,'',location.pathname+location.hash);
   }
 })();

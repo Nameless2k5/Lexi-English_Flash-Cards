@@ -25,7 +25,7 @@
     const live=token=>meta.enabled&&token===epoch;
     function remember(){try{env.storage().setItem(META_KEY,JSON.stringify(meta));}catch{/* Current cloud acknowledgement remains valid in memory. */}}
     function update(status,message=''){view={...view,status,message,lastBackupAt:meta.lastBackupAt,localSaved:hooks.localAvailable()};hooks.onStatus?.(snapshot());}
-    function snapshot(){return {...view,enabled:meta.enabled,busy:!!busy,localCount:count(hooks.read()),remote:remote?{revision:remote.revision,updatedAt:remote.updatedAt,count:count(remote.state)}:null};}
+    function snapshot(){return {...view,lastBackupAt:knownUser?.id===meta.userId?meta.lastBackupAt:null,enabled:meta.enabled,busy:!!busy,localCount:count(hooks.read()),remote:remote?{revision:remote.revision,updatedAt:remote.updatedAt,count:count(remote.state)}:null};}
     function later(delay=900){clearTimeout(timer);if(meta.enabled&&!blocked)timer=setTimeout(()=>sync(),delay);}
     function acknowledge(hash,revision,updatedAt){meta={...meta,enabled:true,userId:knownUser.id,ackHash:hash,pendingHash:null,revision,lastBackupAt:updatedAt};remember();view.user=knownUser;retry=0;}
     function conflict(message){blocked=true;update('conflict',message||'Máy này và tài khoản có hai bản tiến độ khác nhau. Chọn bản muốn tiếp tục dùng.');}
@@ -120,6 +120,16 @@
     function connect(){if(busy)return busy;epoch++;meta.enabled=true;remember();blocked=false;verified=false;return sync(true);}
     function changed(){changes++;view.localSaved=hooks.localAvailable();if(meta.enabled){if(!blocked){update(env.online()?'pending':'offline','Thay đổi mới đang chờ sao lưu.');later();}else hooks.onStatus?.(snapshot());}else update('off');}
     function pause(){epoch++;clearTimeout(timer);meta.enabled=false;remember();verified=false;blocked=false;update('off','Đã tạm dừng sao lưu tự động trên thiết bị này. Bản sao trên tài khoản vẫn được giữ.');}
+    function signedOut(notify=true){
+      epoch++;clearTimeout(timer);meta.enabled=false;remember();verified=false;blocked=false;knownUser=null;remote=null;
+      view={...view,user:null,history:[],status:'signedout',message:'Đã dừng sao lưu trên máy này. Tiến độ trên máy và bản sao của tài khoản cũ vẫn được giữ.'};
+      if(notify)hooks.onStatus?.(snapshot());
+    }
+    function prepareSignOut(){
+      if(meta.enabled&&view.status!=='saved'&&!hooks.confirm?.('Tiến độ mới chưa được máy chủ xác nhận. Đăng xuất sẽ dừng sao lưu; bản trên máy vẫn được giữ. Bạn muốn tiếp tục đăng xuất?'))return false;
+      // Keep the native top-level anchor intact until its default navigation runs.
+      signedOut(false);return true;
+    }
     function chooseLocal(){
       if(busy||!meta.enabled||!verified||!knownUser)return Promise.resolve();
       if(!hooks.confirm?.('Sao lưu bản trên máy này ('+count(hooks.read())+' từ đã học) thành bản mới nhất của tài khoản '+knownUser.email+'?'))return Promise.resolve();
@@ -162,11 +172,11 @@
     }
     function resume(){if(meta.enabled&&!busy&&Date.now()-lastCheck>5000)sync(true);}
     function start(resumeConnect=false){checkPersistence();if(resumeConnect){meta.enabled=true;remember();}if(meta.enabled)sync(true);else update('off');}
-    return {start,connect,sync,changed,pause,restore,restoreHistorical,chooseLocal,resume,checkPersistence,snapshot,refresh:()=>hooks.onStatus?.(snapshot())};
+    return {start,connect,sync,changed,pause,signedOut,prepareSignOut,restore,restoreHistorical,chooseLocal,resume,checkPersistence,snapshot,refresh:()=>hooks.onStatus?.(snapshot())};
   }
   function panel(s){
     const saved=s.status==='saved',conflict=s.status==='conflict',signIn=s.status==='signin';
-    const title={off:'Giữ tiến độ ngoài thiết bị',checking:'Đang kiểm tra bản sao',saving:'Đang sao lưu',saved:'Đã có bản sao trên tài khoản',pending:'Có thay đổi chưa sao lưu',offline:'Chờ mạng để sao lưu',error:'Chưa xác nhận được sao lưu',signin:'Đăng nhập để sao lưu',conflict:'Chọn bản tiến độ muốn dùng'}[s.status]||'Bảo vệ tiến độ';
+    const title={off:'Giữ tiến độ ngoài thiết bị',signedout:'Đăng nhập tài khoản khác',checking:'Đang kiểm tra bản sao',saving:'Đang sao lưu',saved:'Đã có bản sao trên tài khoản',pending:'Có thay đổi chưa sao lưu',offline:'Chờ mạng để sao lưu',error:'Chưa xác nhận được sao lưu',signin:'Đăng nhập để sao lưu',conflict:'Chọn bản tiến độ muốn dùng'}[s.status]||'Bảo vệ tiến độ';
     const status=s.message||(saved?'Những thay đổi hiện tại đã được máy chủ xác nhận.':'Bộ nhớ iPhone có thể bị dọn khi thiếu dung lượng. Bản sao trên tài khoản giúp bạn lấy lại tiến độ.');
     const storage={checking:'Đang kiểm tra…',granted:'Đã được cấp lưu trữ bền vững.',available:'Có thể yêu cầu lưu trữ bền vững.',denied:'Trình duyệt chưa cấp lưu trữ bền vững.',unsupported:'Trình duyệt chưa hỗ trợ yêu cầu lưu trữ bền vững.',error:'Chưa kiểm tra được quyền lưu trữ.'}[s.persistent];
     return '<div class="backup-card '+(saved?'is-saved':conflict?'is-conflict':'')+'"><div class="backup-card-title"><span class="backup-symbol" aria-hidden="true">'+(saved?'✓':'☁')+'</span><div><h3>'+esc(title)+'</h3><p>'+esc(status)+'</p></div></div>'+
@@ -174,14 +184,14 @@
       (s.lastBackupAt?'<p class="backup-time">Lần xác nhận gần nhất: '+esc(stamp(s.lastBackupAt))+'</p>':'')+
       (!s.localSaved?'<p class="backup-local-error">Máy chưa lưu được tiến độ cục bộ. Giữ app mở đến khi sao lưu thành công hoặc xuất tệp dự phòng.</p>':'')+
       (conflict?'<div class="backup-choices"><div><span>Trên máy này</span><strong>'+s.localCount+' từ đã học</strong></div><div><span>Trên tài khoản</span><strong>'+(s.remote?s.remote.count+' từ đã học':'Chưa có bản sao')+'</strong>'+(s.remote?'<small>'+esc(stamp(s.remote.updatedAt))+'</small>':'')+'</div></div><div class="progress-actions">'+(s.remote?'<button class="btn btn-primary" data-backup="restore">Dùng bản tài khoản</button>':'')+'<button class="btn btn-outline" data-backup="local" '+(s.localCount===0&&s.remote?.count>0?'disabled':'')+'>Sao lưu bản trên máy</button><button class="btn btn-ghost" data-action="export">Xuất bản trên máy trước</button></div>':'')+
-      '<div class="progress-actions">'+(!s.enabled?'<button class="btn btn-primary" data-backup="connect">Bật sao lưu bằng tài khoản</button>':signIn?'<a class="btn btn-primary" href="/signin-with-chatgpt?return_to=%2F%3Fbackup%3Dconnect%23progress" target="_top">Đăng nhập bằng ChatGPT</a>':!conflict?'<button class="btn btn-outline" data-backup="sync" '+(s.busy?'disabled':'')+'>Sao lưu ngay</button>':'')+(s.enabled?'<button class="btn btn-ghost" data-backup="pause">Tạm dừng sao lưu</button>':'')+'</div>'+
+      '<div class="progress-actions">'+(s.status==='signedout'?'<a class="btn btn-primary" href="/signin-with-chatgpt?return_to=%2F%3Fbackup%3Dconnect%23progress" target="_top">Đăng nhập bằng ChatGPT</a>':!s.enabled?'<button class="btn btn-primary" data-backup="connect">Bật sao lưu bằng tài khoản</button>':signIn?'<a class="btn btn-primary" href="/signin-with-chatgpt?return_to=%2F%3Fbackup%3Dconnect%23progress" target="_top">Đăng nhập bằng ChatGPT</a>':!conflict?'<button class="btn btn-outline" data-backup="sync" '+(s.busy?'disabled':'')+'>Sao lưu ngay</button>':'')+(s.enabled?'<button class="btn btn-ghost" data-backup="pause">Tạm dừng sao lưu</button>':'')+(s.user?'<a class="btn btn-ghost" data-backup-signout href="/signout-with-chatgpt?return_to=%2F%3Fbackup%3Daccount%23progress" target="_top">Đăng xuất</a>':'')+'</div>'+(s.status==='signedout'?'<p class="backup-disclosure">Chọn tài khoản muốn dùng khi đăng nhập lại. Nếu màn hình đăng nhập vẫn tự chọn tài khoản cũ, hãy đổi tài khoản trên ChatGPT trong cùng trình duyệt rồi quay lại Lexi.</p>':'')+
       '<p class="backup-disclosure">Khi bật, tiến độ, từ đã lưu và mục tiêu được gửi đến cơ sở dữ liệu của Lexi, gắn với tài khoản ChatGPT bạn đăng nhập. Dùng cùng tài khoản để khôi phục trên iPhone hoặc PC. Các bản khác nhau cần bạn chọn; Lexi không tự gộp.</p>'+
       (s.enabled&&s.user&&s.history?.length?'<details class="backup-history"><summary>Khôi phục một bản sao trước</summary><p>Chọn theo thời gian. Bản được khôi phục sẽ trở thành một bản sao mới.</p><label>Bản sao <select data-backup-history aria-label="Chọn bản sao tiến độ">'+s.history.map(h=>'<option value="'+h.revision+'">'+esc(stamp(h.updatedAt))+' · '+h.learned+' từ</option>').join('')+'</select></label><button class="btn btn-outline" data-backup="history" '+(s.busy?'disabled':'')+'>Khôi phục bản đã chọn</button></details>':'')+'</div>'+
       '<div class="backup-device"><h3>Bảo vệ bản lưu trên máy</h3><p>'+esc(storage)+'</p>'+(['available','denied','error'].includes(s.persistent)?'<button class="btn btn-outline" data-backup="persist">Yêu cầu lưu trữ bền vững</button>':'')+'<p>Lưu trữ bền vững giúp giảm nguy cơ bị dọn; vẫn cần bản sao ngoài thiết bị. Trên iPhone, thêm Lexi vào Màn hình chính và mở từ biểu tượng đó.</p></div>'+
       '<div class="backup-file"><h3>Thêm một tệp dự phòng</h3><p>Xuất JSON hoặc chọn “Lưu vào Tệp” trong bảng chia sẻ của iPhone, rồi chọn iCloud Drive. Tệp này nằm ngoài dữ liệu trình duyệt.</p><div class="progress-actions"><button class="btn btn-outline" data-action="share-backup">Lưu vào Tệp / chia sẻ</button><button class="btn btn-ghost" data-action="export">Tải tệp JSON</button><button class="btn btn-ghost" data-action="import">Nhập bản sao</button></div></div>';
   }
   function banner(s){
-    const titles={off:'Đừng để bộ nhớ đầy làm mất tiến độ.',checking:'Đang kiểm tra bản sao tiến độ…',saving:'Đang sao lưu tiến độ…',saved:'Tiến độ hiện tại đã được sao lưu.',pending:'Có tiến độ mới đang chờ sao lưu.',offline:'Đang offline · tiến độ mới chờ sao lưu.',error:'Chưa sao lưu được thay đổi mới.',signin:'Đăng nhập để giữ tiến độ ngoài thiết bị.',conflict:'Có hai bản tiến độ cần bạn chọn.'};
+    const titles={signedout:'Đã đăng xuất · tiến độ trên máy vẫn được giữ.',off:'Đừng để bộ nhớ đầy làm mất tiến độ.',checking:'Đang kiểm tra bản sao tiến độ…',saving:'Đang sao lưu tiến độ…',saved:'Tiến độ hiện tại đã được sao lưu.',pending:'Có tiến độ mới đang chờ sao lưu.',offline:'Đang offline · tiến độ mới chờ sao lưu.',error:'Chưa sao lưu được thay đổi mới.',signin:'Đăng nhập để giữ tiến độ ngoài thiết bị.',conflict:'Có hai bản tiến độ cần bạn chọn.'};
     const title=!s.localSaved?'Chưa lưu được tiến độ trên máy.':titles[s.status];
     return '<div><strong>'+esc(title)+'</strong><span>'+(s.status==='saved'?'Máy chủ xác nhận lúc '+esc(stamp(s.lastBackupAt))+'.':s.status==='off'?'Bật sao lưu tài khoản hoặc lưu một tệp vào iCloud Drive.':'Mở phần bảo vệ tiến độ để xem trạng thái và khôi phục.')+'</span></div><button class="btn '+(s.status==='saved'?'btn-ghost':'btn-secondary')+'" data-action="backup-settings">'+(s.status==='saved'?'Xem bản sao':'Bảo vệ tiến độ')+'</button>';
   }
