@@ -1,9 +1,9 @@
 /* Lexi PWA cache: bump CACHE_NAME when publishing a new shell/data version. */
 'use strict';
-const CACHE_NAME = 'lexi-v4';
+const CACHE_NAME = 'lexi-v5-synonyms';
 const BASE_URL = new URL('./', self.location.href);
 const SHELL_PATHS = [
-  './', './index.html', './styles.css', './app.js', './data.js',
+  './', './index.html', './styles.css', './app.js', './data.js', './synonyms.js',
   './manifest.webmanifest', './icon-192.png', './icon-512.png',
   './apple-touch-icon.png', './favicon.svg'
 ];

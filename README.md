@@ -8,7 +8,8 @@
 - Thẻ học theo phiên tối đa 10 từ; tự đánh giá mức nhớ.
 - Trắc nghiệm nghĩa và câu ví dụ có chỗ trống; kết quả và XP tính từ thao tác thật.
 - Ôn tập theo lịch: chưa nhớ → 10 phút, cần ôn → 1 ngày, đã nhớ → 3 ngày rồi tăng dần, tối đa 60 ngày.
-- Tìm từ/ý nghĩa tiếng Việt, lọc B1/B2/C1, lưu từ yêu thích.
+- Tìm từ gốc, từ gần nghĩa hoặc nghĩa tiếng Việt; lọc theo trình độ của từ gốc; lưu từ yêu thích.
+- Từ gần nghĩa và cách diễn đạt mở rộng: cấp độ CEFR tham khảo, mức trang trọng, sắc thái, cấu trúc thường gặp, ví dụ Anh–Việt.
 - Mục tiêu mỗi ngày, chuỗi ngày học, tiến độ theo chủ đề, biểu đồ 7 ngày.
 - Xuất/nhập bản sao JSON để chuyển tiến độ giữa thiết bị.
 - Web manifest, biểu tượng ứng dụng và service worker cho nội dung offline.
@@ -41,7 +42,8 @@ Hoặc đưa toàn bộ thư mục dist lên bất kỳ hosting tĩnh có HTTPS 
 - dist/index.html: khung giao diện, điều hướng, modal.
 - dist/styles.css: thiết kế responsive, chế độ giảm chuyển động.
 - dist/app.js: phiên học, quiz, SRS, lưu/nhập/xuất tiến độ, phát âm, cài PWA.
-- dist/data.js: thư viện từ vựng, dễ mở rộng theo cùng schema.
+- dist/data.js: thư viện từ gốc; giữ nguyên ID để bảo toàn tiến độ.
+- dist/synonyms.js: window.LEXI_SYNONYMS, ánh xạ ID từ gốc → danh sách so sánh; nội dung chỉ được dựng khi mở mục.
 - dist/sw.js: cache ứng dụng có phiên bản và xác nhận sẵn sàng offline.
 - dist/manifest.webmanifest và các icon: cấu hình cài ứng dụng.
 
@@ -52,3 +54,22 @@ Khi thay đổi tài nguyên đã cache, tăng CACHE_NAME trong sw.js. Bản c�
 Kiểm tra cú pháp JS; 160 mục dữ liệu/ID/IPA/fields; logic lịch ôn, XP và kiểm tra bản sao; các tình huống cache/offline service worker độc lập; luồng thẻ học 10 từ và quiz 10 câu qua trình duyệt; tìm kiếm/lưu từ/tải lại giữ tiến độ; bố cục PC và kích thước iPhone.
 
 Cài thực tế trên iPhone và chất lượng giọng đọc từng thiết bị cần kiểm tra trên thiết bị đó. Đây là PWA cài từ trình duyệt, không phải gói App Store/EXE native.
+
+## Từ gần nghĩa và cách dùng
+
+Mỗi mục trong synonyms.js có word, level (CEFR tham khảo), register, meaning, distinction (so với nghĩa của từ gốc), pattern, example, translation và relation. relation=near là gần nghĩa theo ngữ cảnh, paraphrase là cách diễn đạt tương đương, related là có liên quan nhưng khác nghĩa. Không xem mọi mục là từ đồng nghĩa thay thế được trực tiếp. Với thuật ngữ chuyên ngành, giới hạn nghĩa được ghi rõ.
+
+Các cách diễn đạt mở rộng hiện là tài liệu so sánh gắn với từ gốc, chưa có lịch ôn/XP riêng. Dữ liệu tiến độ và ID 160 từ gốc vẫn giữ nguyên khi cập nhật cùng domain. Khi thêm bộ so sánh mới, sửa synonyms.js và tăng phiên bản sw.js trước khi deploy.
+
+Bản mở rộng hiện có 312 mục so sánh, 307 cách diễn đạt khác nhau gắn với đủ 160 từ gốc. Số này gồm gần nghĩa, cách diễn đạt và khái niệm liên quan đã được gắn nhãn riêng.
+
+Nguồn tra cứu để đối chiếu các trường hợp khó (các ví dụ và giải thích trong app được biên soạn riêng; nhãn CEFR không phải trích phân loại chính thức của các nguồn):
+- https://dictionary.cambridge.org/dictionary/english/empathy
+- https://dictionary.cambridge.org/dictionary/english/sympathy
+- https://dictionary.cambridge.org/dictionary/english/throughput
+- https://www.merriam-webster.com/dictionary/cryptography
+- https://www.merriam-webster.com/dictionary/biodiversity
+- https://dictionary.cambridge.org/dictionary/english/compostable
+- https://www.oxfordlearnersdictionaries.com/definition/english/rapport
+- https://www.oxfordlearnersdictionaries.com/us/definition/english/warranty
+- https://www.cancer.gov/publications/dictionaries/cancer-terms/def/sign

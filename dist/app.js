@@ -26,6 +26,8 @@
   $$('[data-icon]').forEach(el=>el.innerHTML=icon(el.dataset.icon));
   const topics=window.LEXI_DATA?.topics||[];
   const words=topics.flatMap(t=>t.words.map(w=>({...w,topic:t.id})));
+  const synonymData=window.LEXI_SYNONYMS||{};
+  const synonymEntries=w=>Array.isArray(synonymData[w.id])?synonymData[w.id]:[];
   const byId=new Map(words.map(w=>[w.id,w]));
   const topicById=new Map(topics.map(t=>[t.id,t]));
   const main=$('#main'), lesson=$('#lesson'), settings=$('#settings');
@@ -106,18 +108,38 @@
     '<section><div class="section-head"><div><h2>Chủ đề dành cho bạn</h2><p>Từ những điều gần gũi, đến những ý tưởng lớn.</p></div><a class="text-link" href="#topics">Xem tất cả '+icon('arrow')+'</a></div><div class="topic-grid">'+topics.slice(0,6).map(topicCard).join('')+'</div></section><div class="quote-strip"><span>✷</span><div><p>Một chút tập trung hôm nay. Thêm nhiều tự tin ngày mai.</p><small>Không cần học thật nhiều — chỉ cần quay lại đều đặn.</small></div><button class="btn btn-secondary" data-action="review">Ôn tập hôm nay '+icon('arrow')+'</button></div>';
   }
   function filtersMarkup(withSaved=false) {return '<div class="filter-bar"><div class="chips">'+['all','B1','B2','C1'].map(v=>'<button class="chip '+(filters.level===v?'active':'')+'" data-filter="'+v+'" aria-pressed="'+(filters.level===v)+'">'+(v==='all'?'Tất cả trình độ':v)+'</button>').join('')+(withSaved?'<button class="chip '+(filters.saved?'active':'')+'" data-action="saved-filter" aria-pressed="'+filters.saved+'">☆ Đã lưu ('+state.favorites.length+')</button>':'')+'</div><label class="filter-search">'+icon('search')+'<input id="filter-input" type="search" placeholder="'+(withSaved?'Tìm từ, nghĩa tiếng Việt…':'Tìm chủ đề…')+'" value="'+esc(filters.query)+'" aria-label="'+(withSaved?'Tìm trong từ điển':'Tìm chủ đề')+'"></label></div>';}
-  const normalize=s=>String(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').toLowerCase();
+  const normalize=s=>String(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[đĐ]/g,'d').toLowerCase();
+  const dictionaryIndex=new Map(words.map(w=>[w.id,normalize(w.word+' '+w.meaning+' '+synonymEntries(w).map(s=>s.word+' '+s.meaning).join(' '))]));
+  function renderSynonymPanel(w) {
+    const entries=synonymEntries(w);if(!entries.length)return '';
+    const q=normalize(filters.query);
+    const matched=q&&!normalize(w.word+' '+w.meaning).includes(q)&&entries.some(s=>normalize(s.word+' '+s.meaning).includes(q));
+    return '<details class="synonym-panel" data-synonyms="'+esc(w.id)+'"'+(matched?' open':'')+'><summary><span class="synonym-summary-icon">≈</span><span>Từ gần nghĩa & cách dùng <small>'+entries.length+' cách diễn đạt · so sánh sắc thái</small></span><span class="synonym-chevron" aria-hidden="true">⌄</span></summary><div class="synonym-content"></div></details>';
+  }
+  function populateSynonyms(panel) {
+    if(!panel.open||panel.dataset.loaded)return;
+    const w=byId.get(panel.dataset.synonyms);if(!w)return;
+    const labels={near:'Gần nghĩa',paraphrase:'Cách diễn đạt',related:'Liên quan · khác nghĩa'};
+    $('.synonym-content',panel).innerHTML='<p class="synonym-note">So với <strong lang="en">'+esc(w.word)+'</strong> trong nghĩa “'+esc(w.meaning)+'”. Cấp độ CEFR chỉ tham khảo; từ gần nghĩa không luôn thay thế được cho nhau.</p>'+synonymEntries(w).map((s,i)=>'<article class="synonym-entry"><div class="synonym-entry-head"><strong lang="en">'+esc(s.word)+'</strong><span class="synonym-level" title="Cấp độ CEFR tham khảo">'+esc(s.level)+'</span><span class="synonym-register">'+esc(s.register)+'</span><button class="icon-button" data-synonym-speak="'+esc(w.id)+'" data-synonym-index="'+i+'" aria-label="Nghe phát âm '+esc(s.word)+'">'+icon('volume')+'</button></div><div class="synonym-meaning">'+esc(s.meaning)+' <span class="synonym-relation '+esc(s.relation)+'">'+esc(labels[s.relation]||labels.related)+'</span></div><p class="synonym-distinction"><b>Phân biệt</b> '+esc(s.distinction)+'</p><p class="synonym-pattern"><b>Hay dùng</b> <span lang="en">'+esc(s.pattern)+'</span></p><div class="synonym-example"><p lang="en">'+esc(s.example)+'</p><p>'+esc(s.translation)+'</p></div></article>').join('');
+    panel.dataset.loaded='true';
+  }
+  function hydrateSynonyms(root){$$('details[data-synonyms][open]',root).forEach(populateSynonyms);}
+  document.addEventListener('toggle',e=>{if(e.target.matches?.('details[data-synonyms]'))populateSynonyms(e.target);},true);
   function topicResults() {const q=normalize(filters.query);return topics.filter(t=>(filters.level==='all'||t.words.some(w=>w.level===filters.level))&&normalize(t.title+' '+t.subtitle+' '+t.description).includes(q));}
   function renderTopics() {main.innerHTML=pageHead('FIND YOUR NEXT INTEREST','Một chủ đề, nhiều điều hay.',''+topics.length+' chủ đề · '+words.length+' từ và cụm từ B1–C1 · Học theo ngữ cảnh')+filtersMarkup()+'<div id="results" class="topic-grid"></div>';updateResults('topics');}
-  function wordRow(w,i=0,examples=false) {const p=state.progress[w.id];return '<div class="word-row"><span class="word-number">'+String(i+1).padStart(2,'0')+'</span><div class="word-main"><div class="word-head"><strong lang="en">'+esc(w.word)+'</strong><small>'+esc(w.ipa)+'</small></div><p class="word-meaning">'+esc(w.meaning)+' <span style="color:#b0b8a8">· '+esc(w.pos)+'</span></p>'+(examples?'<p class="word-example" lang="en">'+esc(w.example)+'</p>':'')+'</div><span class="word-status">'+(p?.interval>=7?'Đã vững':p?.seen?'Đang học':'Chưa học')+'</span><span class="level-tag">'+w.level+'</span>'+speakerButton(w.id)+favoriteButton(w.id)+'</div>';}
-  function dictionaryResults() {const q=normalize(filters.query);return words.filter(w=>(filters.level==='all'||w.level===filters.level)&&(!filters.saved||isSaved(w.id))&&normalize(w.word+' '+w.meaning).includes(q));}
-  function renderDictionary() {main.innerHTML=pageHead('YOUR WORD COLLECTION','Từ điển của bạn','Tìm nghĩa, nghe phát âm và giữ lại những từ bạn muốn nhớ.')+'<div class="dict-summary"><span><strong>'+words.length+'</strong> từ trong thư viện</span><span><strong>'+learned().length+'</strong> đã học</span><span><strong>'+state.favorites.length+'</strong> đã lưu</span></div>'+filtersMarkup(true)+'<div id="results"></div>';updateResults('dictionary');}
+  function wordRow(w,i=0,examples=false) {
+    const p=state.progress[w.id];
+    return '<div class="word-item"><div class="word-row"><span class="word-number">'+String(i+1).padStart(2,'0')+'</span><div class="word-main"><div class="word-head"><strong lang="en">'+esc(w.word)+'</strong><small>'+esc(w.ipa)+'</small></div><p class="word-meaning">'+esc(w.meaning)+' <span style="color:#b0b8a8">· '+esc(w.pos)+'</span></p>'+(examples?'<p class="word-example" lang="en">'+esc(w.example)+'</p>':'')+'</div><span class="word-status">'+(p?.interval>=7?'Đã vững':p?.seen?'Đang học':'Chưa học')+'</span><span class="level-tag">'+w.level+'</span>'+speakerButton(w.id)+favoriteButton(w.id)+'</div>'+renderSynonymPanel(w)+'</div>';
+  }
+  function dictionaryResults() {const q=normalize(filters.query);return words.filter(w=>(filters.level==='all'||w.level===filters.level)&&(!filters.saved||isSaved(w.id))&&dictionaryIndex.get(w.id).includes(q));}
+  function renderDictionary() {main.innerHTML=pageHead('YOUR WORD COLLECTION','Từ điển của bạn','Tra từ gốc hoặc từ gần nghĩa, so sánh cách dùng và lưu từ bạn muốn nhớ.')+'<div class="dict-summary"><span><strong>'+words.length+'</strong> từ gốc</span><span><strong>'+learned().length+'</strong> đã học</span><span><strong>'+state.favorites.length+'</strong> đã lưu</span><span><strong>'+Object.values(synonymData).reduce((n,a)=>n+a.length,0)+'</strong> mục so sánh</span></div>'+filtersMarkup(true)+'<div id="results"></div>';updateResults('dictionary');}
   function updateResults(type) {
     const list=type==='topics'?topicResults():dictionaryResults();
     const root=$('#results');if(!root)return;
     if(!list.length){root.className='';root.innerHTML='<div class="empty"><span class="empty-icon">🔎</span><h2>Chưa tìm thấy kết quả</h2><p>Thử từ khóa khác hoặc đổi bộ lọc trình độ nhé.</p><button class="btn btn-secondary" data-action="clear-filter">Xóa bộ lọc</button></div>';return;}
     root.className=type==='topics'?'topic-grid':'';
     root.innerHTML=type==='topics'?list.map(topicCard).join(''):'<div class="section-head"><p style="font-size:11px;color:var(--muted)">'+list.length+' kết quả</p></div><div class="word-list">'+list.map((w,i)=>wordRow(w,i)).join('')+'</div>';
+    hydrateSynonyms(root);
   }
   function renderTopic(id) {
     const t=topicById.get(id);if(!t){location.hash='topics';return;}
@@ -175,9 +197,10 @@
       const q=s.questions[s.index];
       content='<p class="quiz-prompt">'+(q.context?'Chọn từ phù hợp với ngữ cảnh':'Chọn nghĩa đúng của từ')+'</p><h3 class="'+(q.context?'quiz-context':'quiz-title')+'" lang="en">'+esc(q.prompt)+'</h3><div class="choices">'+q.options.map((id,i)=>{const correct=s.answered&&id===w.id,wrong=s.answered&&s.choice===id&&id!==w.id;return '<button class="choice '+(correct?'correct':wrong?'wrong':'')+'" data-choice="'+id+'" '+(s.answered?'disabled':'')+'><b>'+(i+1)+'</b><span>'+esc(q.context?byId.get(id).word:byId.get(id).meaning)+'</span></button>';}).join('')+'</div>'+(s.answered?'<div class="quiz-feedback"><strong>'+(s.choice===w.id?'Chính xác! ✨':'Chưa đúng — mình cùng nhớ lại nhé.')+'</strong>'+esc(w.word)+' · '+esc(w.meaning)+'<p style="margin-top:5px" lang="en">'+esc(w.example)+'</p><p style="margin-top:4px">'+esc(w.translation)+'</p></div><div class="lesson-bottom"><button class="btn btn-primary" data-action="next">'+(s.index===s.queue.length-1?'Xem kết quả':'Câu tiếp theo')+' '+icon('arrow')+'</button></div>':'')+'<p class="session-foot">Phím 1–4 để chọn · Enter để tiếp tục</p>';
     } else {
-      content='<div class="flashcard"><div class="flash-top"><span class="level-tag">'+esc(w.level)+' · '+esc(w.pos)+'</span>'+favoriteButton(w.id)+'</div><h3 lang="en">'+esc(w.word)+'</h3><p class="ipa">'+esc(w.ipa)+'</p>'+speakerButton(w.id)+(s.flipped?'<div class="card-meaning">'+esc(w.meaning)+'</div><div class="example-block"><p lang="en">'+esc(w.example)+'</p><p>'+esc(w.translation)+'</p></div>':'<p class="flip-hint">Nhớ nghĩa của từ này trước khi lật thẻ nhé.</p>')+'</div><div class="lesson-bottom">'+(s.flipped?'<div class="grade-actions"><button class="grade hard" data-grade="hard">Chưa nhớ <small>1 · Ôn sau 10 phút</small></button><button class="grade ok" data-grade="ok">Cần ôn thêm <small>2 · Ôn sau 1 ngày</small></button><button class="grade good" data-grade="good">Đã nhớ <small>3 · Ôn sau '+Math.min(60,Math.max(3,(state.progress[w.id]?.interval||0)*2))+' ngày</small></button></div>':'<button class="btn btn-primary" data-action="flip">Xem nghĩa '+icon('arrow')+'</button>')+'</div><p class="session-foot">Space để lật thẻ · 1 / 2 / 3 để đánh giá khi đã lật</p>';
+      content='<div class="flashcard"><div class="flash-top"><span class="level-tag">'+esc(w.level)+' · '+esc(w.pos)+'</span>'+favoriteButton(w.id)+'</div><h3 lang="en">'+esc(w.word)+'</h3><p class="ipa">'+esc(w.ipa)+'</p>'+speakerButton(w.id)+(s.flipped?'<div class="card-meaning">'+esc(w.meaning)+'</div><div class="example-block"><p lang="en">'+esc(w.example)+'</p><p>'+esc(w.translation)+'</p></div>'+renderSynonymPanel(w):'<p class="flip-hint">Lật thẻ để xem nghĩa, từ gần nghĩa và cách dùng.</p>')+'</div><div class="lesson-bottom">'+(s.flipped?'<div class="grade-actions"><button class="grade hard" data-grade="hard">Chưa nhớ <small>1 · Ôn sau 10 phút</small></button><button class="grade ok" data-grade="ok">Cần ôn thêm <small>2 · Ôn sau 1 ngày</small></button><button class="grade good" data-grade="good">Đã nhớ <small>3 · Ôn sau '+Math.min(60,Math.max(3,(state.progress[w.id]?.interval||0)*2))+' ngày</small></button></div>':'<button class="btn btn-primary" data-action="flip">Xem nghĩa '+icon('arrow')+'</button>')+'</div><p class="session-foot">Space để lật thẻ · 1 / 2 / 3 để đánh giá khi đã lật</p>';
     }
     lesson.innerHTML='<div class="lesson-shell">'+head+content+'</div>';
+    hydrateSynonyms(lesson);
     focusLesson();
   }
   function renderResult() {
@@ -194,11 +217,14 @@
   function loadVoices(){if('speechSynthesis'in window)voices=speechSynthesis.getVoices().filter(v=>/^en(?:-|_)/i.test(v.lang));}
   if('speechSynthesis'in window){loadVoices();speechSynthesis.addEventListener('voiceschanged',loadVoices);}
   function speak(id){
-    const w=byId.get(id);if(!w)return;
+    const w=byId.get(id);if(w)speakText(w.word);
+  }
+  function speakText(text){
+    if(!text)return;
     if(!('speechSynthesis'in window)){toast('Trình duyệt chưa hỗ trợ phát âm. Bạn vẫn có thể đọc phiên âm IPA.');return;}
     loadVoices();const voice=voices.find(v=>v.localService&&/^en-US/i.test(v.lang))||voices.find(v=>v.localService)||voices.find(v=>/^en-US/i.test(v.lang))||voices[0];
     if(!navigator.onLine&&(!voice||!voice.localService)){toast('Chưa có giọng tiếng Anh offline trên thiết bị. Hãy kết nối mạng hoặc thêm giọng đọc trong cài đặt thiết bị.');return;}
-    speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(w.word);if(voice)u.voice=voice;u.lang=voice?.lang||'en-US';u.rate=.85;u.onerror=e=>{if(!['canceled','interrupted'].includes(e.error))toast('Chưa phát được âm thanh. Hãy kiểm tra âm lượng hoặc giọng đọc tiếng Anh của thiết bị.');};speechSynthesis.speak(u);
+    speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);if(voice)u.voice=voice;u.lang=voice?.lang||'en-US';u.rate=.85;u.onerror=e=>{if(!['canceled','interrupted'].includes(e.error))toast('Chưa phát được âm thanh. Hãy kiểm tra âm lượng hoặc giọng đọc tiếng Anh của thiết bị.');};speechSynthesis.speak(u);
   }
   function showSettings(){
     settings.innerHTML='<div class="settings-shell"><div class="settings-head"><h2 id="settings-title">Góc nhỏ của bạn</h2><button class="icon-button" data-action="close-settings" aria-label="Đóng cài đặt">'+icon('close')+'</button></div><section class="settings-section"><h3>Nhịp học vừa sức</h3><label>Mục tiêu mỗi ngày <select id="daily-goal">'+[5,10,15,20].map(n=>'<option '+(n===state.goal?'selected':'')+' value="'+n+'">'+n+' từ / ngày</option>').join('')+'</select></label><p style="margin-top:10px">Thư viện dành cho B1–C1. Bạn có thể lọc trình độ trong Chủ đề và Từ điển.</p></section><section class="settings-section"><h3>Cài Lexi trên PC hoặc iPhone</h3><p>Mở như một ứng dụng, học nhanh hơn mỗi ngày.</p>'+(installPrompt?'<button class="btn btn-primary" data-action="install">'+icon('download')+' Cài ứng dụng</button>':'')+'<div class="install-device"><strong>Trên iPhone</strong><ol><li>Mở link Lexi trong Safari.</li><li>Chọn Chia sẻ → Thêm vào Màn hình chính.</li><li>Bật “Mở dưới dạng ứng dụng web” nếu có, rồi chọn Thêm.</li></ol></div><div class="install-device"><strong>Trên PC</strong><p>Mở bằng Chrome hoặc Edge, chọn biểu tượng cài ứng dụng ở thanh địa chỉ hoặc “Cài đặt trang dưới dạng ứng dụng” trong menu trình duyệt.</p></div></section><section class="settings-section"><h3>Học offline & phát âm</h3><p id="offline-detail">'+(offlineReady?'Đã lưu bộ từ và giao diện để học offline sau lần mở này.':offlineMessage)+'</p><p>Giọng phát âm do thiết bị cung cấp. Một số giọng cần mạng; ưu tiên giọng tiếng Anh đã tải trên máy.</p></section><section class="settings-section"><h3>Tiến độ thuộc về bạn</h3><p>'+ (storageAvailable?'Đang lưu trên trình duyệt này.':'Trình duyệt đang hạn chế lưu dữ liệu.')+' Chưa có đồng bộ tự động giữa các thiết bị. Xuất bản sao để chuyển tiến độ hoặc giữ dự phòng.</p><div class="progress-actions"><button class="btn btn-outline" data-action="export">'+icon('download')+' Xuất tiến độ</button><button class="btn btn-outline" data-action="import">'+icon('upload')+' Nhập bản sao</button></div></section><p class="privacy-note">Lexi không yêu cầu tài khoản và không gửi tiến độ học lên máy chủ.</p></div>';
@@ -209,6 +235,7 @@
   document.addEventListener('click',async e=>{
     const button=e.target.closest('button');if(!button)return;
     const d=button.dataset;
+    if(d.synonymSpeak){const term=synonymData[d.synonymSpeak]?.[Number(d.synonymIndex)];if(term)speakText(term.word);return;}
     if(d.speak){speak(d.speak);return;}if(d.favorite){favorite(d.favorite);if(route().name==='dictionary'&&filters.saved&&!lesson.open)updateResults('dictionary');return;}
     if(d.learn){startSession(d.learn);return;}if(d.quiz){startSession(d.quiz,'quiz');return;}if(d.grade){grade(d.grade);return;}if(d.choice){chooseAnswer(d.choice);return;}
     if(d.filter){filters.level=d.filter;render();return;}
@@ -231,7 +258,7 @@
   $('#global-search').addEventListener('submit',e=>{e.preventDefault();filters={level:'all',query:$('#search-input').value.trim(),saved:false};if(route().name==='dictionary')renderDictionary();else location.hash='dictionary';$('#search-input').blur();});
   document.addEventListener('keydown',e=>{
     if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();$('#search-input').focus();return;}
-    if(/INPUT|TEXTAREA|SELECT/.test(e.target.tagName))return;
+    if(/INPUT|TEXTAREA|SELECT|SUMMARY/.test(e.target.tagName))return;
     if(!session||!lesson.open)return;
     if(session.index>=session.queue.length)return;
     if(session.mode==='quiz'){
