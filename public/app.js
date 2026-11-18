@@ -5,6 +5,9 @@
   const $$ = (s,root=document) => [...root.querySelectorAll(s)];
   const esc = s => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const paths = {
+    moon:'M21 13a9 9 0 1 1-10-10 7 7 0 0 0 10 10z',
+    sun:'M12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M5 19l1.5-1.5M17.5 6.5 19 5',
+    monitor:'M3 4h18v13H3zM8 21h8M12 17v4',
     home:'M3 10 12 3l9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z',
     grid:'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z',
     repeat:'M20 7h-9a6 6 0 0 0-6 6v1M17 3l4 4-4 4M4 17h9a6 6 0 0 0 6-6v-1M7 21l-4-4 4-4',
@@ -242,8 +245,19 @@
     main.innerHTML=pageHead('LOOK HOW FAR YOU HAVE COME','Những bước nhỏ, có ý nghĩa.','Theo dõi việc học và giữ một bản tiến độ ngoài thiết bị.')+statsMarkup()+'<div class="progress-grid"><section class="panel"><h2>Nhịp học 7 ngày qua</h2><p class="panel-subtitle">Số từ khác nhau đã luyện mỗi ngày</p><div class="activity-chart">'+days.map((d,i)=>'<div class="activity-day '+(i===6?'today':'')+'"><span>'+d.n+'</span><div class="bar-track"><i style="height:'+(d.n/max*100)+'%"></i></div><span>'+d.label+'</span></div>').join('')+'</div><div class="data-note">'+mastered().length+' từ đã có khoảng ôn từ 7 ngày trở lên. Tiến độ tăng khi bạn thực sự luyện, không chỉ khi mở thẻ.</div></section><section class="panel"><h2>Theo từng chủ đề</h2><p class="panel-subtitle">Từ đã luyện / tổng từ trong chủ đề</p>'+topics.map(t=>'<a class="topic-progress" href="#topic/'+t.id+'"><span class="topic-emoji" style="--tint:'+t.color+'">'+t.emoji+'</span><span class="name">'+esc(t.title)+'</span><span class="small-track"><i style="width:'+(topicLearned(t)/t.words.length*100)+'%"></i></span><small>'+topicLearned(t)+'/'+t.words.length+'</small></a>').join('')+'</section></div><section class="progress-protection" aria-label="Sao lưu và bảo vệ tiến độ"><div data-backup-panel></div></section>';
   }
   function route() {const bits=(location.hash.slice(1)||'home').split('/');return {name:bits[0],id:bits[1]};}
+  function paintThemeControls(){
+    const theme=window.LEXI_THEME;if(!theme)return;
+    const dark=theme.getResolved()==='dark',label=dark?'Chuyển sang chế độ sáng':'Chuyển sang chế độ tối';
+    $$('[data-action="toggle-theme"]').forEach(button=>{button.innerHTML=icon(dark?'sun':'moon');button.setAttribute('aria-label',label);button.title=label;button.setAttribute('aria-pressed',String(dark));});
+    $$('[data-theme-choice]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.themeChoice===theme.getPreference())));
+  }
+  function changeTheme(value){
+    const result=value?window.LEXI_THEME?.setPreference(value):window.LEXI_THEME?.toggle();
+    if(result&&!result.saved)toast('Đã đổi giao diện trong phiên này; trình duyệt chưa cho lưu lựa chọn.');
+  }
+  document.addEventListener('lexi-theme-change',paintThemeControls);
   function render() {
-    paintIdentity();
+    paintIdentity();paintThemeControls();
     const r=route();updateNav(r.name);
     ({home:renderHome,profile:renderProfile,topics:renderTopics,toeic:renderToeic,dictionary:renderDictionary,progress:renderProgress,review:renderReview,topic:()=>renderTopic(r.id)}[r.name]||renderHome)();
     document.title='Lexi — '+({home:'Hôm nay',profile:'Hồ sơ của bạn',topics:'Khám phá chủ đề',toeic:'TOEIC 400–800',dictionary:'Từ điển',progress:'Tiến độ',review:'Ôn tập',topic:topicById.get(r.id)?.title}[r.name]||'Học từ vựng');
@@ -317,8 +331,8 @@
     speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);if(voice)u.voice=voice;u.lang=voice?.lang||'en-US';u.rate=.85;u.onerror=e=>{if(!['canceled','interrupted'].includes(e.error))toast('Chưa phát được âm thanh. Hãy kiểm tra âm lượng hoặc giọng đọc tiếng Anh của thiết bị.');};speechSynthesis.speak(u);
   }
   function showSettings(){
-    settings.innerHTML='<div class="settings-shell"><div class="settings-head"><h2 id="settings-title">Góc nhỏ của bạn</h2><button class="icon-button" data-action="close-settings" aria-label="Đóng cài đặt">'+icon('close')+'</button></div><section class="settings-section"><div data-backup-panel></div></section><section class="settings-section"><h3>Nhịp học vừa sức</h3><label>Mục tiêu mỗi ngày <select id="daily-goal">'+[5,10,15,20].map(n=>'<option '+(n===state.goal?'selected':'')+' value="'+n+'">'+n+' từ / ngày</option>').join('')+'</select></label><p style="margin-top:10px">Thư viện tổng quát B1–C1 và bộ TOEIC mục tiêu 400–800, có thêm từ nền tảng A2. Bạn có thể lọc trình độ trong Chủ đề và Từ điển.</p></section><section class="settings-section"><h3>Cài Lexi trên PC hoặc iPhone</h3><p>Mở như một ứng dụng, học nhanh hơn mỗi ngày.</p>'+(installPrompt?'<button class="btn btn-primary" data-action="install">'+icon('download')+' Cài ứng dụng</button>':'')+'<div class="install-device"><strong>Trên iPhone</strong><ol><li>Mở link Lexi trong Safari.</li><li>Chọn Chia sẻ → Thêm vào Màn hình chính.</li><li>Bật “Mở dưới dạng ứng dụng web” nếu có, rồi chọn Thêm.</li></ol></div><div class="install-device"><strong>Trên PC</strong><p>Mở bằng Chrome hoặc Edge, chọn biểu tượng cài ứng dụng ở thanh địa chỉ hoặc “Cài đặt trang dưới dạng ứng dụng” trong menu trình duyệt.</p></div></section><section class="settings-section"><h3>Học offline & phát âm</h3><p id="offline-detail">'+(offlineReady?'Đã lưu bộ từ và giao diện để học offline sau lần mở này.':offlineMessage)+'</p><p>Giọng phát âm do thiết bị cung cấp. Một số giọng cần mạng; ưu tiên giọng tiếng Anh đã tải trên máy.</p></section><p class="privacy-note">Bạn có thể học không cần tài khoản. Tiến độ chỉ được gửi lên máy chủ Lexi khi bạn bật sao lưu.</p></div>';
-    protection?.refresh();settings.showModal();
+    settings.innerHTML='<div class="settings-shell"><div class="settings-head"><h2 id="settings-title">Góc nhỏ của bạn</h2><button class="icon-button" data-action="close-settings" aria-label="Đóng cài đặt">'+icon('close')+'</button></div><section class="settings-section"><h3>Giao diện</h3><div class="theme-options" role="group" aria-label="Chọn giao diện"><button type="button" class="theme-option" data-theme-choice="light" aria-pressed="false">'+icon('sun')+'<span>Sáng</span></button><button type="button" class="theme-option" data-theme-choice="dark" aria-pressed="false">'+icon('moon')+'<span>Tối</span></button><button type="button" class="theme-option" data-theme-choice="system" aria-pressed="false">'+icon('monitor')+'<span>Hệ thống</span></button></div><p class="theme-note">Lưu riêng trên thiết bị này. Chế độ Hệ thống tự đổi theo giao diện máy.</p></section><section class="settings-section"><div data-backup-panel></div></section><section class="settings-section"><h3>Nhịp học vừa sức</h3><label>Mục tiêu mỗi ngày <select id="daily-goal">'+[5,10,15,20].map(n=>'<option '+(n===state.goal?'selected':'')+' value="'+n+'">'+n+' từ / ngày</option>').join('')+'</select></label><p style="margin-top:10px">Thư viện tổng quát B1–C1 và bộ TOEIC mục tiêu 400–800, có thêm từ nền tảng A2. Bạn có thể lọc trình độ trong Chủ đề và Từ điển.</p></section><section class="settings-section"><h3>Cài Lexi trên PC hoặc iPhone</h3><p>Mở như một ứng dụng, học nhanh hơn mỗi ngày.</p>'+(installPrompt?'<button class="btn btn-primary" data-action="install">'+icon('download')+' Cài ứng dụng</button>':'')+'<div class="install-device"><strong>Trên iPhone</strong><ol><li>Mở link Lexi trong Safari.</li><li>Chọn Chia sẻ → Thêm vào Màn hình chính.</li><li>Bật “Mở dưới dạng ứng dụng web” nếu có, rồi chọn Thêm.</li></ol></div><div class="install-device"><strong>Trên PC</strong><p>Mở bằng Chrome hoặc Edge, chọn biểu tượng cài ứng dụng ở thanh địa chỉ hoặc “Cài đặt trang dưới dạng ứng dụng” trong menu trình duyệt.</p></div></section><section class="settings-section"><h3>Học offline & phát âm</h3><p id="offline-detail">'+(offlineReady?'Đã lưu bộ từ và giao diện để học offline sau lần mở này.':offlineMessage)+'</p><p>Giọng phát âm do thiết bị cung cấp. Một số giọng cần mạng; ưu tiên giọng tiếng Anh đã tải trên máy.</p></section><p class="privacy-note">Bạn có thể học không cần tài khoản. Tiến độ chỉ được gửi lên máy chủ Lexi khi bạn bật sao lưu.</p></div>';
+    paintThemeControls();protection?.refresh();settings.showModal();
   }
   function exportData(){const blob=new Blob([JSON.stringify({app:'lexi',...state},null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='lexi-tien-do-'+today()+'.json';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('Đã yêu cầu tải tệp dự phòng. Hãy kiểm tra thư mục tải về.');}
   async function shareBackup(){
@@ -332,6 +346,7 @@
     if(e.target.closest('a[data-backup-signout]')){if(!protection?.prepareSignOut())e.preventDefault();return;}
     const button=e.target.closest('button');if(!button)return;
     const d=button.dataset;
+    if(d.themeChoice){changeTheme(d.themeChoice);return;}
     if(d.backup){
       if(!protection)return;
       if(d.backup==='history'){const select=button.closest('[data-backup-panel]')?.querySelector('[data-backup-history]');protection.restoreHistorical(Number(select?.value));return;}
@@ -345,6 +360,7 @@
     if(d.learn){startSession(d.learn);return;}if(d.quiz){startSession(d.quiz,'quiz');return;}if(d.grade){grade(d.grade);return;}if(d.choice){chooseAnswer(d.choice);return;}
     if(d.filter){filters.level=d.filter;render();return;}
     switch(d.action){
+      case 'toggle-theme':changeTheme();break;
       case 'profile-upload':$('#profile-photo')?.click();break;
       case 'profile-remove-photo':window.LEXI_AVATAR_CROP?.cancel();profileImageRequest++;profilePhotoBusy=false;profileDraft.image=null;paintProfileDraft();profileFeedback('Bấm “Lưu hồ sơ” để áp dụng.');break;
       case 'profile-reset':window.LEXI_AVATAR_CROP?.cancel();profileImageRequest++;profilePhotoBusy=false;profileDraft=window.LEXI_PROFILE.validate(state.profile);$('#profile-nickname').value=profileDraft.nickname;paintProfileDraft();profileFeedback('Đã trở về hồ sơ đang lưu.');break;

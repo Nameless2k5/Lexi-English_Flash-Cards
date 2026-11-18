@@ -4,6 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#f8faf6">
+  <meta name="color-scheme" content="light dark">
+  <script src="theme.js"></script>
   <meta name="description" content="Học từ vựng theo chủ đề và TOEIC mục tiêu 400–800. Thẻ học, phát âm, câu ví dụ và ôn tập đúng lúc. Dành cho PC và iPhone.">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -13,6 +15,7 @@
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="theme.css">
   <script src="data.js" defer></script>
   <script src="toeic.js" defer></script>
   <script src="synonyms.js" defer></script>
@@ -45,6 +48,7 @@
     <header class="topbar">
       <div class="topbar-title"><span class="tiny-leaf">✦</span> Một chút mỗi ngày.</div>
       <form id="global-search" class="search"><span data-icon="search"></span><input id="search-input" type="search" placeholder="Tìm một từ tiếng Anh…" autocomplete="off" aria-label="Tìm từ tiếng Anh"><kbd>Ctrl K</kbd></form>
+      <button type="button" class="icon-button theme-toggle" data-action="toggle-theme" aria-label="Chuyển giao diện sáng hoặc tối" title="Giao diện sáng/tối"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 13a9 9 0 1 1-10-10 7 7 0 0 0 10 10z"/></svg></button>
       <a href="#profile" class="profile-trigger" aria-label="Mở hồ sơ của bạn"><span data-profile-avatar></span><span data-profile-name>Hồ sơ</span></a>
     </header>
     <div id="backup-banner" class="backup-banner" role="status" hidden></div>

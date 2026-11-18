@@ -119,3 +119,9 @@ public/avatar-crop.js dùng cùng phép biến đổi chuẩn hóa cho khung, pr
 ## Avatar nhất quán giữa các kích thước
 
 Trong trang Hồ sơ, avatar góc trên và avatar lớn cùng hiển thị profileDraft đang xem trước. Lưu hồ sơ mới cập nhật state và sao lưu; rời trang trước khi lưu dùng lại hồ sơ đã lưu. Hai kích thước dùng chung khung vuông, bo góc theo phần trăm và object-fit:contain để hiển thị toàn bộ vùng ảnh đã chọn. Không dựng lại ảnh nếu markup không đổi. Đã kiểm tra cùng src, tỉ lệ khung, bo góc trên desktop/mobile, cả trước khi lưu và sau tải lại.
+
+## Giao diện sáng/tối
+
+Nút mặt trăng/mặt trời trên thanh trên đổi nhanh giữa Sáng và Tối. Cài đặt → Giao diện có Sáng, Tối, Hệ thống; mặc định theo hệ thống và tự cập nhật khi hệ điều hành đổi. public/theme.js chạy trước CSS để áp dụng lựa chọn khi tải trang, cập nhật theme-color và color-scheme. public/theme.css dùng màu riêng cho các trang, bài học, trạng thái quiz, sao lưu và căn chỉnh avatar; không lọc màu ảnh.
+
+Lựa chọn lưu riêng trong localStorage với khóa lexi-theme-v1, đồng bộ giữa các tab cùng nguồn, không thay đổi progress/profile hoặc bản sao cloud. Nếu trình duyệt chặn lưu trữ, giao diện vẫn đổi trong phiên và hiển thị thông báo. Hai asset được precache để dùng offline. tests/theme.cjs kiểm tra khởi động lại, theo hệ thống, ghi đè thủ công, storage events và lỗi lưu trữ.

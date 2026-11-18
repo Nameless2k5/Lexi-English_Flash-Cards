@@ -1,9 +1,9 @@
 /* Lexi PWA cache: bump CACHE_NAME when publishing a new shell/data version. */
 'use strict';
-const CACHE_NAME = 'lexi-v17-avatar-frame';
+const CACHE_NAME = 'lexi-v18-dark-mode';
 const BASE_URL = new URL('./', self.location.href);
 const SHELL_PATHS = [
-  './', './index.html', './styles.css', './app.js', './data.js', './toeic.js', './synonyms.js', './profile.js', './avatar-crop.js', './backup.js',
+  './', './index.html', './styles.css', './theme.css', './theme.js', './app.js', './data.js', './toeic.js', './synonyms.js', './profile.js', './avatar-crop.js', './backup.js',
   './manifest.webmanifest', './icon-192.png', './icon-512.png',
   './apple-touch-icon.png', './favicon.svg'
 ];
