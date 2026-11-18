@@ -1,6 +1,6 @@
 # Lexi — học từ vựng tiếng Anh B1–C1
 
-Ứng dụng PWA cho người Việt, dùng trên PC và iPhone. Giao diện HTML/CSS/JavaScript nhẹ, không tải framework hay font ngoài trên thiết bị. Máy chủ Vinext/Cloudflare Workers bổ sung sao lưu D1 theo tài khoản; không cần API từ dịch vụ AI.
+Ứng dụng PWA cho người Việt, dùng trên PC và iPhone. Thư viện hiện có 260 mục: 160 từ theo chủ đề và 100 từ/cụm từ TOEIC. Giao diện HTML/CSS/JavaScript nhẹ, không tải framework hay font ngoài trên thiết bị. Máy chủ Vinext/Cloudflare Workers bổ sung sao lưu D1 theo tài khoản; không cần API từ dịch vụ AI.
 
 ## Chức năng
 
@@ -93,3 +93,13 @@ Nguồn tra cứu để đối chiếu các trường hợp khó (các ví dụ 
 ## Đăng xuất và đổi tài khoản
 
 Trong Cài đặt hoặc Tiến độ, nút Đăng xuất xuất hiện khi đã xác định được tài khoản. Điều hướng top-level qua /signout-with-chatgpt của Sites; không tự xử lý cookie hoặc mật khẩu. App dừng sao lưu trước khi rời trang, giữ tiến độ local và bản sao cloud, cảnh báo nếu còn thay đổi chưa xác nhận. Khi quay lại có nút Đăng nhập bằng ChatGPT; dùng tài khoản mới cần chọn rõ có muốn chuyển bản local hay khôi phục bản tài khoản. Nếu nhà cung cấp đăng nhập tự chọn tài khoản cũ, đổi tài khoản ChatGPT trong cùng trình duyệt trước khi thử lại.
+
+## TOEIC mục tiêu 400–800
+
+public/toeic.js thêm 5 nhóm, mỗi nhóm 20 từ có ID riêng ổn định: toeic-400 … toeic-800. Mỗi mục có phiên âm UK, nghĩa, từ loại, ví dụ tự biên soạn Anh–Việt, nhãn CEFR tham khảo, collocation, usage, context và toeicTarget. Các mốc là mục tiêu tổng điểm Listening & Reading do Lexi sắp xếp để học tích lũy, không phải danh sách từ tần suất cao có thống kê, nhãn chính thức ETS, phép đổi CEFR hay dự đoán điểm. Bài quiz là luyện từ vựng, không mô phỏng đủ đề thi.
+
+Mở #toeic từ thanh bên hoặc thẻ trên Hôm nay/Chủ đề. Từ điển có bộ lọc 400/500/600/700/800 và tìm cụm thường đi cùng. Thẻ đã lật hiển thị ghi chú cách dùng. Tất cả từ mới tham gia SRS/XP và sao lưu như từ cũ. lib/lexi-catalog.json được cập nhật đủ 260 ID; backend chặn client cache cũ ghi mất tiến độ TOEIC bằng catalogVersion. Không thay đổi ID hoặc nội dung của 160 từ gốc và 312 mục so sánh.
+
+Ngữ cảnh đối chiếu: https://www.ets.org/pdfs/toeic/toeic-listening-reading-test-examinee-handbook.pdf (văn phòng, nhân sự, mua hàng, tài chính, vận chuyển, hợp đồng). Mô tả năng lực tham khảo: https://www.ets.org/pdfs/toeic/toeic-listening-reading-score-descriptors.pdf (điểm từng kỹ năng, không phải tổng điểm hay danh sách từ).
+
+Chạy npm test để kiểm tra nội dung, ID, mọi câu điền từ, bộ lọc, sao lưu và khôi phục cả 100 từ mới trên D1/SQLite.

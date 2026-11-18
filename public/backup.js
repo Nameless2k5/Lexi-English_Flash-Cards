@@ -89,7 +89,7 @@
       if(remote?.hash===hash){acknowledge(hash,baseRevision,remote.updatedAt);if(generation===changes)update('saved');else{update('pending','Thay đổi mới đang chờ sao lưu.');later(100);}return;}
       // Record the attempt before sending, so a lost response can be reconciled on restart.
       meta.userId=knownUser.id;meta.pendingHash=hash;remember();update('saving','Đang sao lưu tiến độ…');
-      const {response,json}=await request('PUT',{userId:knownUser.id,baseRevision,state:captured});
+      const {response,json}=await request('PUT',{userId:knownUser.id,baseRevision,state:captured,catalogVersion:window.LEXI_TOEIC_TOPICS?.length===5?2:1});
       if(!live(token))return;
       if(response.status===401){authRequired();return;}
       if(response.status===409||response.status===403){verified=false;if(await readRemote(token))conflict('Tài khoản hoặc bản sao đã thay đổi trên thiết bị khác. Kiểm tra hai bản trước khi tiếp tục.');return;}

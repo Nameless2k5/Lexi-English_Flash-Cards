@@ -75,6 +75,9 @@ export async function backupRequest(request: Request, user: User | null, db?: D1
     try { state = validateState(body.state); } catch { return json({ error: "invalid_state" }, 400); }
     const existing = await db.prepare("SELECT revision, state, updated_at FROM lexi_backups WHERE user_id = ?").bind(user.userId).first<BackupRow>();
     if ((existing?.revision ?? 0) !== body.baseRevision) return json({ error: "revision_conflict" }, 409);
+    // An older cached app validates only the original 160 IDs. Never let it
+    // silently drop TOEIC progress written by an updated device.
+    if (existing?.state.includes('toeic-') && body.catalogVersion !== 2) return json({ error: "catalog_update_required" }, 409);
     if (existing && learned(validateState(JSON.parse(existing.state))) > 0 && learned(state) === 0) return json({ error: "empty_replacement" }, 422);
     const writeId = crypto.randomUUID(), now = Date.now(), serialized = JSON.stringify(state);
     const write = body.baseRevision === 0

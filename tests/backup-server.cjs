@@ -85,6 +85,17 @@ async function main() {
     eq((await call('GET', bob)).body.backup.state, validateState(bobState), 'other account state stays unchanged');
     const actual = await db.prepare('SELECT COUNT(*) AS n FROM lexi_backup_history').first();
     eq(actual.n, 11, 'real SQLite history rows exactly ten Alice plus one Bob');
+    const toeicUser={userId:'toeic-learner',email:'toeic@example.test'},mixed=state(1);
+    const ids=require('../lib/lexi-catalog.json').words.filter(id=>id.startsWith('toeic-'));
+    for(const id of ids)mixed.progress[id]={seen:2,success:1,interval:1,due:123456};
+    mixed.favorites=['daily-01','toeic-400-01','toeic-800-20'];mixed.lastTopic='toeic-800';
+    mixed.daily['2026-11-18']={ids:['daily-01','toeic-400-01','toeic-800-20'],xp:30,correct:2,answers:3};
+    eq((await call('PUT',toeicUser,payload(0,mixed,toeicUser.userId))).status,200,'new TOEIC IDs save to actual D1');
+    eq((await call('GET',toeicUser)).body.backup.state,validateState(mixed),'old and all 100 new word progress recover together');
+    eq(Object.keys((await call('GET',toeicUser)).body.backup.state.progress).length,101,'no TOEIC progress stripped');
+    eq((await call('PUT',toeicUser,payload(1,state(2),toeicUser.userId))).body.error,'catalog_update_required','old cached client cannot remove TOEIC data');
+    eq(Object.keys((await call('GET',toeicUser)).body.backup.state.progress).length,101,'old-client write leaves new progress intact');
+    eq((await call('PUT',toeicUser,{...payload(1,mixed,toeicUser.userId),catalogVersion:2})).status,200,'updated client can continue saving TOEIC progress');
     console.log(`PASS: ${checks} assertions against real Miniflare D1/SQLite`);
   } finally { await mf.dispose(); }
 }
