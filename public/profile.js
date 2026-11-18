@@ -22,7 +22,7 @@
     const p=validate(raw),preset=avatars.find(([id])=>id===p.avatar),color=colors.find(([id])=>id===p.color)[1];
     return '<span class="personal-avatar" style="--avatar-size:'+Number(size)+'px;--avatar-color:'+color+'">'+(p.image?'<img src="'+esc(p.image)+'" alt="" width="'+Number(size)+'" height="'+Number(size)+'">':'<span aria-hidden="true">'+preset[1]+'</span>')+'</span>';
   }
-  async function photo(file){
+  async function photo(file,options={}){
     if(!file||file.size>8*1024*1024)throw new Error('Chọn ảnh tối đa 8 MB nhé.');
     if(!/^image\/(jpeg|png|webp|heic|heif)$/i.test(file.type))throw new Error('Hãy chọn ảnh JPG, PNG, WebP hoặc ảnh HEIC được trình duyệt hỗ trợ.');
     const url=URL.createObjectURL(file);
@@ -30,10 +30,11 @@
       const image=new Image();
       await new Promise((resolve,reject)=>{image.onload=resolve;image.onerror=()=>reject(new Error('Chưa đọc được ảnh này. Hãy thử ảnh JPG hoặc PNG.'));image.src=url;});
       const w=image.naturalWidth,h=image.naturalHeight;if(!w||!h||w*h>40000000)throw new Error('Ảnh quá lớn. Hãy chọn ảnh có độ phân giải nhỏ hơn.');
-      const canvas=document.createElement('canvas');canvas.width=canvas.height=192;
-      const ctx=canvas.getContext('2d');if(!ctx)throw new Error('Trình duyệt chưa xử lý được ảnh.');
-      const side=Math.min(w,h);ctx.fillStyle='#fff';ctx.fillRect(0,0,192,192);ctx.drawImage(image,(w-side)/2,(h-side)/2,side,side,0,0,192,192);
-      const result=canvas.toDataURL('image/jpeg',0.82);if(!validImage(result))throw new Error('Chưa thu nhỏ được ảnh. Hãy chọn ảnh khác.');
+      if(options.isCurrent&&!options.isCurrent())return null;
+      if(!window.LEXI_AVATAR_CROP)throw new Error('Chưa tải được công cụ căn chỉnh. Hãy mở lại Lexi khi có mạng.');
+      const result=await window.LEXI_AVATAR_CROP.open(image);
+      if(result===null)return null;
+      if(!validImage(result))throw new Error('Chưa thu nhỏ được ảnh. Hãy chọn ảnh khác.');
       return result;
     }finally{URL.revokeObjectURL(url);}
   }

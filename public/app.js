@@ -150,14 +150,14 @@
       '<div class="profile-layout"><section class="profile-editor panel"><form id="profile-form"><div class="profile-preview"><div id="profile-preview"></div><span class="eyebrow">YOUR WORDS. YOUR WORLD.</span><h2 id="profile-preview-name"></h2><p>Đây là cách bạn xuất hiện trong Lexi.</p></div><div class="profile-field"><label for="profile-nickname">Bạn muốn Lexi gọi mình là gì?</label><input id="profile-nickname" name="nickname" type="text" maxlength="48" autocomplete="nickname" placeholder="Ví dụ: Mèo chăm học" value="'+esc(profileDraft.nickname)+'" aria-describedby="nickname-count"><div class="profile-field-help"><span>Biệt danh trong Lexi · có thể để trống để dùng mặc định</span><span id="nickname-count"></span></div></div>'+
       '<fieldset class="profile-choice"><legend>Chọn avatar của bạn</legend><div class="avatar-grid">'+api.avatars.map(([id,emoji,label])=>'<button type="button" class="avatar-option" data-profile-preset="'+id+'" aria-label="Avatar '+esc(label)+'" aria-pressed="false"><span aria-hidden="true">'+emoji+'</span></button>').join('')+'</div></fieldset>'+
       '<fieldset class="profile-choice"><legend>Một màu yêu thích</legend><div class="avatar-colors">'+api.colors.map(([id,hex,label])=>'<button type="button" class="avatar-color" style="--swatch:'+hex+'" data-profile-color="'+id+'" aria-label="'+esc(label)+'" aria-pressed="false"></button>').join('')+'</div></fieldset>'+
-      '<div class="profile-photo-actions"><button type="button" class="btn btn-outline" data-action="profile-upload">'+icon('upload')+' Chọn ảnh từ máy</button><button type="button" class="btn btn-ghost" data-action="profile-remove-photo" hidden>Bỏ ảnh đã chọn</button><input id="profile-photo" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" hidden></div><p class="profile-photo-note">Ảnh tối đa 8 MB. Lexi cắt vuông ở giữa và thu nhỏ trên thiết bị trước khi lưu. Bạn có thể dùng avatar có sẵn bất cứ lúc nào.</p><p id="profile-feedback" class="profile-feedback" role="status" aria-live="polite"></p><div class="profile-save-row"><button class="btn btn-primary" type="submit" data-profile-save>Lưu hồ sơ</button><button class="btn btn-ghost" type="button" data-action="profile-reset">Bỏ thay đổi</button></div></form></section>'+
+      '<div class="profile-photo-actions"><button type="button" class="btn btn-outline" data-action="profile-upload">'+icon('upload')+' Chọn ảnh từ máy</button><button type="button" class="btn btn-ghost" data-action="profile-remove-photo" hidden>Bỏ ảnh đã chọn</button><input id="profile-photo" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" hidden></div><p class="profile-photo-note">Ảnh tối đa 8 MB. Kéo, thu phóng và xoay để chọn vùng ảnh trước khi lưu. Bạn có thể dùng avatar có sẵn bất cứ lúc nào.</p><p id="profile-feedback" class="profile-feedback" role="status" aria-live="polite"></p><div class="profile-save-row"><button class="btn btn-primary" type="submit" data-profile-save>Lưu hồ sơ</button><button class="btn btn-ghost" type="button" data-action="profile-reset">Bỏ thay đổi</button></div></form></section>'+
       '<aside class="profile-aside"><section class="profile-learning panel"><span class="profile-spark" aria-hidden="true">✦</span><div class="eyebrow">A LITTLE MORE YOU, EVERY DAY</div><h2>Mỗi ngày thêm<br>một phiên bản mới.</h2><p>Biệt danh mới, tinh thần mới. Những từ bạn đã học vẫn luôn ở đây.</p><div class="profile-metrics"><div><strong>'+learned().length+'</strong><span>từ đã luyện</span></div><div><strong>'+streak()+'</strong><span>ngày liên tiếp</span></div><div><strong>'+totalXP()+'</strong><span>XP khám phá</span></div></div><a class="btn btn-secondary" href="#topics">Tiếp tục khám phá '+icon('arrow')+'</a></section><section class="profile-account panel"><h3>Hồ sơ đi cùng bạn</h3><p data-profile-account></p><p>Khi bật sao lưu, nickname và avatar được lưu cùng tiến độ trên tài khoản Lexi. Dùng cùng tài khoản ChatGPT để khôi phục trên thiết bị khác.</p><button class="text-link" type="button" data-action="backup-settings">Tài khoản & sao lưu '+icon('arrow')+'</button></section></aside></div>';
     paintProfileDraft();paintProfileAccount();
   }
   async function chooseProfilePhoto(file){
     if(!file||!profileDraft)return;
-    const api=window.LEXI_PROFILE,token=++profileImageRequest;profilePhotoBusy=true;paintProfileDraft();profileFeedback('Đang thu nhỏ ảnh trên thiết bị…');
-    try{const image=await api.photo(file);if(token!==profileImageRequest||route().name!=='profile')return;profileDraft.image=image;profileFeedback('Ảnh đã sẵn sàng. Bấm “Lưu hồ sơ” để áp dụng.');}
+    const api=window.LEXI_PROFILE,token=++profileImageRequest;profilePhotoBusy=true;paintProfileDraft();profileFeedback('Đang đọc ảnh để căn chỉnh…');
+    try{const image=await api.photo(file,{isCurrent:()=>token===profileImageRequest&&route().name==='profile'});if(token!==profileImageRequest||route().name!=='profile')return;if(image===null){profileFeedback('Đã hủy căn chỉnh. Avatar trước đó vẫn được giữ.');return;}profileDraft.image=image;profileFeedback('Ảnh đã sẵn sàng. Bấm “Lưu hồ sơ” để áp dụng.');}
     catch(error){if(token===profileImageRequest)profileFeedback(error.message||'Chưa xử lý được ảnh. Hãy chọn ảnh khác.',true);}
     finally{if(token===profileImageRequest){profilePhotoBusy=false;paintProfileDraft();}const input=$('#profile-photo');if(input)input.value='';}
   }
@@ -325,7 +325,7 @@
     try{await navigator.share({files:[file],title:'Bản sao tiến độ Lexi'});toast('Đã chia sẻ tệp. Nếu chọn Lưu vào Tệp, hãy kiểm tra vị trí bạn vừa chọn.');}
     catch(error){if(error.name!=='AbortError'){exportData();}}
   }
-  function importData(){const input=document.createElement('input');input.type='file';input.accept='.json,application/json';input.addEventListener('change',async()=>{const f=input.files?.[0];if(!f)return;if(f.size>2e6){toast('Tệp quá lớn. Hãy chọn bản sao JSON do Lexi xuất.');return;}try{const raw=JSON.parse(await f.text());if(raw.app!=='lexi')throw new Error();const valid=validate(raw);if(!confirm('Thay thế tiến độ trên thiết bị này bằng bản sao đã chọn?'))return;state=valid;profileDraft=null;profileImageRequest++;profilePhotoBusy=false;initialReadFailed=false;save();if(settings.open)settings.close();render();toast('Đã khôi phục tiến độ học.');}catch{toast('Bản sao không hợp lệ. Hãy dùng tệp JSON được xuất từ Lexi.');}});input.click();}
+  function importData(){const input=document.createElement('input');input.type='file';input.accept='.json,application/json';input.addEventListener('change',async()=>{const f=input.files?.[0];if(!f)return;if(f.size>2e6){toast('Tệp quá lớn. Hãy chọn bản sao JSON do Lexi xuất.');return;}try{const raw=JSON.parse(await f.text());if(raw.app!=='lexi')throw new Error();const valid=validate(raw);if(!confirm('Thay thế tiến độ trên thiết bị này bằng bản sao đã chọn?'))return;state=valid;profileDraft=null;window.LEXI_AVATAR_CROP?.cancel();profileImageRequest++;profilePhotoBusy=false;initialReadFailed=false;save();if(settings.open)settings.close();render();toast('Đã khôi phục tiến độ học.');}catch{toast('Bản sao không hợp lệ. Hãy dùng tệp JSON được xuất từ Lexi.');}});input.click();}
   document.addEventListener('click',async e=>{
     if(e.target.closest('a[data-backup-signout]')){if(!protection?.prepareSignOut())e.preventDefault();return;}
     const button=e.target.closest('button');if(!button)return;
@@ -335,7 +335,7 @@
       if(d.backup==='history'){const select=button.closest('[data-backup-panel]')?.querySelector('[data-backup-history]');protection.restoreHistorical(Number(select?.value));return;}
       ({connect:()=>protection.connect(),sync:()=>protection.sync(true),pause:()=>protection.pause(),restore:()=>protection.restore(),local:()=>protection.chooseLocal(),persist:()=>protection.checkPersistence(true)})[d.backup]?.();return;
     }
-    if(d.profilePreset){profileImageRequest++;profilePhotoBusy=false;profileDraft.avatar=d.profilePreset;profileDraft.image=null;paintProfileDraft();profileFeedback('Bấm “Lưu hồ sơ” để áp dụng.');return;}
+    if(d.profilePreset){window.LEXI_AVATAR_CROP?.cancel();profileImageRequest++;profilePhotoBusy=false;profileDraft.avatar=d.profilePreset;profileDraft.image=null;paintProfileDraft();profileFeedback('Bấm “Lưu hồ sơ” để áp dụng.');return;}
     if(d.profileColor){profileDraft.color=d.profileColor;paintProfileDraft();profileFeedback('Bấm “Lưu hồ sơ” để áp dụng.');return;}
     if(d.toeicBand){filters.toeic=d.toeicBand;filters.level='all';renderDictionary();return;}
     if(d.synonymSpeak){const term=synonymData[d.synonymSpeak]?.[Number(d.synonymIndex)];if(term)speakText(term.word);return;}
@@ -344,8 +344,8 @@
     if(d.filter){filters.level=d.filter;render();return;}
     switch(d.action){
       case 'profile-upload':$('#profile-photo')?.click();break;
-      case 'profile-remove-photo':profileImageRequest++;profilePhotoBusy=false;profileDraft.image=null;paintProfileDraft();profileFeedback('Bấm “Lưu hồ sơ” để áp dụng.');break;
-      case 'profile-reset':profileImageRequest++;profilePhotoBusy=false;profileDraft=window.LEXI_PROFILE.validate(state.profile);$('#profile-nickname').value=profileDraft.nickname;paintProfileDraft();profileFeedback('Đã trở về hồ sơ đang lưu.');break;
+      case 'profile-remove-photo':window.LEXI_AVATAR_CROP?.cancel();profileImageRequest++;profilePhotoBusy=false;profileDraft.image=null;paintProfileDraft();profileFeedback('Bấm “Lưu hồ sơ” để áp dụng.');break;
+      case 'profile-reset':window.LEXI_AVATAR_CROP?.cancel();profileImageRequest++;profilePhotoBusy=false;profileDraft=window.LEXI_PROFILE.validate(state.profile);$('#profile-nickname').value=profileDraft.nickname;paintProfileDraft();profileFeedback('Đã trở về hồ sơ đang lưu.');break;
       case 'quick-learn':startSession(state.lastTopic||topics[0].id);break;
       case 'settings':case 'backup-settings':showSettings();break;case 'close-settings':settings.close();break;
       case 'review':location.hash='review';break;case 'start-review':startSession(null,'review');break;
@@ -382,7 +382,7 @@
       if(session.flipped&&/^[1-3]$/.test(e.key)){e.preventDefault();grade(['hard','ok','good'][Number(e.key)-1]);}
     }
   });
-  window.addEventListener('hashchange',()=>{profileImageRequest++;profilePhotoBusy=false;filters={level:'all',query:route().name==='dictionary'?filters.query:'',saved:false};render();window.scrollTo({top:0});});
+  window.addEventListener('hashchange',()=>{window.LEXI_AVATAR_CROP?.cancel();profileImageRequest++;profilePhotoBusy=false;filters={level:'all',query:route().name==='dictionary'?filters.query:'',saved:false};render();window.scrollTo({top:0});});
   window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e;});
   window.addEventListener('online',()=>updateNav(route().name));window.addEventListener('offline',()=>updateNav(route().name));
   function offlineStatus(message){
@@ -410,7 +410,7 @@
     protection=window.LEXI_BACKUP.create({
       read:()=>state,validate,hasLocal:()=>localPresent,initialError:()=>initialReadFailed,
       localAvailable:()=>storageAvailable,canRestore:()=>!lesson.open,
-      replace:raw=>{state=validate(raw);profileDraft=null;profileImageRequest++;profilePhotoBusy=false;initialReadFailed=false;const goalControl=$('#daily-goal');if(goalControl)goalControl.value=String(state.goal);save(false);render();},
+      replace:raw=>{state=validate(raw);profileDraft=null;window.LEXI_AVATAR_CROP?.cancel();profileImageRequest++;profilePhotoBusy=false;initialReadFailed=false;const goalControl=$('#daily-goal');if(goalControl)goalControl.value=String(state.goal);save(false);render();},
       confirm:message=>confirm(message),toast,onStatus:renderProtection
     });
     window.addEventListener('online',()=>protection.resume());
