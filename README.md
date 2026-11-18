@@ -1,6 +1,6 @@
 # Lexi — học từ vựng tiếng Anh B1–C1
 
-Ứng dụng PWA cho người Việt, dùng trên PC và iPhone. HTML/CSS/JavaScript thuần, không dùng framework, CDN, font ngoài, analytics hay API có phí.
+Ứng dụng PWA cho người Việt, dùng trên PC và iPhone. Giao diện HTML/CSS/JavaScript nhẹ, không tải framework hay font ngoài trên thiết bị. Máy chủ Vinext/Cloudflare Workers bổ sung sao lưu D1 theo tài khoản; không cần API từ dịch vụ AI.
 
 ## Chức năng
 
@@ -11,7 +11,9 @@
 - Tìm từ gốc, từ gần nghĩa hoặc nghĩa tiếng Việt; lọc theo trình độ của từ gốc; lưu từ yêu thích.
 - Từ gần nghĩa và cách diễn đạt mở rộng: cấp độ CEFR tham khảo, mức trang trọng, sắc thái, cấu trúc thường gặp, ví dụ Anh–Việt.
 - Mục tiêu mỗi ngày, chuỗi ngày học, tiến độ theo chủ đề, biểu đồ 7 ngày.
-- Xuất/nhập bản sao JSON để chuyển tiến độ giữa thiết bị.
+- Sao lưu tùy chọn theo tài khoản ChatGPT: trạng thái xác nhận từ máy chủ, khôi phục sau khi dữ liệu trên thiết bị bị xóa, kiểm tra xung đột giữa các thiết bị.
+- Yêu cầu lưu trữ bền vững nếu trình duyệt hỗ trợ; hiển thị kết quả thật.
+- Xuất/nhập bản sao JSON, chia sẻ tệp tới Files/iCloud Drive nếu thiết bị hỗ trợ.
 - Web manifest, biểu tượng ứng dụng và service worker cho nội dung offline.
 
 Các nhãn CEFR là gợi ý phân nhóm học, không phải phân loại chứng nhận chính thức.
@@ -22,34 +24,48 @@ Mở URL được cung cấp trong chat. Trên PC dùng Chrome/Edge và chọn c
 
 Mục Cài đặt trong Lexi có hướng dẫn cài đặt và trạng thái chuẩn bị offline. Chỉ coi bộ từ đã sẵn sàng offline khi ứng dụng xác nhận. Hãy mở online lần đầu để lưu tài nguyên.
 
-Tiến độ nằm trong localStorage của từng trình duyệt/origin. Chưa có đăng nhập riêng hay tự đồng bộ PC–iPhone. Xóa dữ liệu trình duyệt có thể xóa tiến độ; nên xuất bản sao khi cần. Giọng phát âm dùng speechSynthesis của hệ điều hành; một số giọng cần mạng hoặc tải trước trong cài đặt thiết bị.
+Tiến độ vẫn lưu ngay vào localStorage với khóa `lexi-progress-v1`. Trong Cài đặt, bật sao lưu và đăng nhập ChatGPT để lưu thêm trên máy chủ của Lexi. Chỉ coi bản mới được sao lưu sau khi máy chủ xác nhận; khi offline/lỗi bộ nhớ, xem trạng thái còn chờ và xuất tệp dự phòng. Đăng nhập đúng tài khoản để khôi phục khi iOS xóa dữ liệu local. PWA không thể buộc iOS giữ dữ liệu mãi. Giọng phát âm dùng speechSynthesis của hệ điều hành; một số giọng cần mạng hoặc tải trước trong cài đặt thiết bị.
 
 ## Chạy mã nguồn trên PC
 
-Có Python 3:
+Cần Node.js >=22.13 và npm.
 
 ```sh
-cd dist
-python -m http.server 8080 --bind 127.0.0.1
+npm run install:ci
+npm run build
+# Áp dụng các SQL migration chưa chạy, theo thứ tự; chỉ cơ sở dữ liệu local:
+node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0000_slim_annihilus.sql
+npm run dev -- --hostname 127.0.0.1
 ```
 
-Mở http://127.0.0.1:8080 bằng trình duyệt. Có thể mở index.html trực tiếp để xem và học cơ bản, nhưng file:// không hỗ trợ cài PWA/service worker. iPhone cần URL HTTPS, không dùng localhost của PC.
-
-Hoặc đưa toàn bộ thư mục dist lên bất kỳ hosting tĩnh có HTTPS nào. Giữ nguyên cấu trúc tệp và MIME types chuẩn. Không cần bước build hay dependency installation.
+Preview portable giả lập đăng nhập tại /signin-with-chatgpt bằng tài khoản local. Dữ liệu local preview độc lập với dữ liệu đã publish. Hosting Sites cấp D1 binding DB và áp dụng migration khi deploy; không đổi project_id hoặc domain để giữ tiến độ cũ.
 
 ## Cấu trúc
 
-- dist/index.html: khung giao diện, điều hướng, modal.
-- dist/styles.css: thiết kế responsive, chế độ giảm chuyển động.
-- dist/app.js: phiên học, quiz, SRS, lưu/nhập/xuất tiến độ, phát âm, cài PWA.
-- dist/data.js: thư viện từ gốc; giữ nguyên ID để bảo toàn tiến độ.
-- dist/synonyms.js: window.LEXI_SYNONYMS, ánh xạ ID từ gốc → danh sách so sánh; nội dung chỉ được dựng khi mở mục.
-- dist/sw.js: cache ứng dụng có phiên bản và xác nhận sẵn sàng offline.
-- dist/manifest.webmanifest và các icon: cấu hình cài ứng dụng.
+- public/: giao diện PWA hiện tại, thư viện 160 từ gốc/312 mục so sánh, icon và service worker.
+- public/backup.js: quản lý bảo vệ lưu trữ, sao lưu/khôi phục và trạng thái.
+- app/route.ts: phục vụ tài liệu HTML gốc, giữ nguyên URL và không tải React vào giao diện học.
+- app/api/backup/route.ts, lib/backup-api.ts: API sao lưu riêng từng người dùng; danh tính do Sites xác thực.
+- lib/lexi-catalog.json: ID từ và chủ đề hợp lệ để kiểm tra dữ liệu gửi lên máy chủ. Cập nhật khi thêm từ mới, giữ ID cũ.
+- db/schema.ts, drizzle/: schema và migration D1 đã sinh. Không sửa migration đã áp dụng.
+- dist/: đầu ra build, không chỉnh trực tiếp.
 
-Khi thay đổi tài nguyên đã cache, tăng CACHE_NAME trong sw.js. Bản cập nhật service worker chờ các cửa sổ ứng dụng cũ đóng để không thay thế mã giữa một phiên học.
+Khi đổi tài nguyên đã cache, tăng CACHE_NAME trong public/sw.js. API/đăng nhập không được đưa vào cache. Bản cập nhật service worker chờ các cửa sổ cũ đóng để tránh đổi mã giữa phiên học.
+
+## Bảo vệ tiến độ và quyền riêng tư
+
+Sao lưu là tùy chọn. Bật trong Cài đặt để gửi tiến độ học, lịch ôn, mục tiêu và từ đã lưu tới D1 của Site. Không gửi câu trả lời tới mô hình AI. Khóa dữ liệu là ID tài khoản do nền tảng cấp, không phải email hoặc ID do trình duyệt tự chọn. Site công khai vẫn không cho đọc/ghi bản sao của tài khoản khác. Mọi API dùng no-store, yêu cầu danh tính; ghi yêu cầu Origin cùng site, JSON và ID tài khoản khớp.
+
+Máy khách đọc bản sao trước khi ghi. Dùng revision/CAS để chống ghi đè từ thiết bị cũ; khác biệt cần lựa chọn rõ ràng. Máy chủ giữ 10 phiên bản gần nhất. GET /api/backup?history=1 liệt kê phiên bản của chính tài khoản; GET /api/backup?revision=N lấy một bản cụ thể. Không tự xóa bản sao khi người dùng đóng app hoặc dữ liệu local mất. Dữ liệu offline chưa tải lên không thể khôi phục từ máy chủ.
+
+Home Screen được miễn giới hạn ITP 7 ngày; vẫn nên sao lưu ngoài origin. persist() chỉ là yêu cầu, không luôn được cấp. Không xin quyền thông báo để đổi lấy lưu trữ. Xuất JSON vào Files/iCloud Drive là phương án độc lập; mở bảng chia sẻ không chứng minh người dùng đã lưu tệp.
+
+Tài liệu: https://webkit.org/tracking-prevention/ và https://webkit.org/blog/14403/updates-to-storage-policy/
 
 ## Kiểm tra đã thực hiện
+
+`npm test`: API chạy trên D1/SQLite thật qua Miniflare và bộ điều khiển sao lưu chạy với các lỗi mạng, xóa dữ liệu local, xung đột thiết bị, đổi tài khoản, khôi phục lịch sử và yêu cầu lưu trữ. `npx tsc --noEmit`: kiểm tra TypeScript.
+
 
 Kiểm tra cú pháp JS; 160 mục dữ liệu/ID/IPA/fields; logic lịch ôn, XP và kiểm tra bản sao; các tình huống cache/offline service worker độc lập; luồng thẻ học 10 từ và quiz 10 câu qua trình duyệt; tìm kiếm/lưu từ/tải lại giữ tiến độ; bố cục PC và kích thước iPhone.
 

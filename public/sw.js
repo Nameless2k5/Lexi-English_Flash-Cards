@@ -1,9 +1,9 @@
 /* Lexi PWA cache: bump CACHE_NAME when publishing a new shell/data version. */
 'use strict';
-const CACHE_NAME = 'lexi-v5-synonyms';
+const CACHE_NAME = 'lexi-v9-backup';
 const BASE_URL = new URL('./', self.location.href);
 const SHELL_PATHS = [
-  './', './index.html', './styles.css', './app.js', './data.js', './synonyms.js',
+  './', './index.html', './styles.css', './app.js', './data.js', './synonyms.js', './backup.js',
   './manifest.webmanifest', './icon-192.png', './icon-512.png',
   './apple-touch-icon.png', './favicon.svg'
 ];
@@ -91,7 +91,9 @@ self.addEventListener('fetch', event => {
   if (request.method !== 'GET') return;
   const url = new URL(request.url);
   if (url.origin !== BASE_URL.origin) return;
-  // Auth endpoints, API requests, third-party requests and unrelated pages are untouched.
+  // Never intercept API, authentication, or a sign-in return navigation.
+  if(url.pathname.startsWith('/api/')||['/signin-with-chatgpt','/signout-with-chatgpt','/callback'].includes(url.pathname)||url.searchParams.has('backup'))return;
+  // The cached shell is static and contains no account identity or progress.
   if (request.mode === 'navigate') {
     if (NAVIGATION_PATHS.has(url.pathname)) event.respondWith(navigationResponse(request));
     return;

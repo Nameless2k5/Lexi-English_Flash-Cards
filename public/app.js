@@ -52,9 +52,32 @@
     }
     return next;
   }
-  let state=defaults();
-  try { const raw=localStorage.getItem(STORAGE);if(raw) state=validate(JSON.parse(raw)); } catch {storageAvailable=false;}
-  function save() { try {localStorage.setItem(STORAGE,JSON.stringify(state));storageAvailable=true;}catch {storageAvailable=false;toast('Trình duyệt chưa cho lưu tiến độ. Hãy xuất bản sao để giữ kết quả.');} }
+  let state=defaults(),localPresent=false,initialReadFailed=false,protection=null;
+  try { const raw=localStorage.getItem(STORAGE);if(raw){localPresent=true;state=validate(JSON.parse(raw));} } catch {storageAvailable=false;initialReadFailed=true;}
+  function save(notify=true) {
+    localPresent=true;
+    try {localStorage.setItem(STORAGE,JSON.stringify(state));storageAvailable=true;}catch {storageAvailable=false;toast('Máy chưa lưu được tiến độ. Sao lưu tài khoản hoặc xuất tệp dự phòng ngay.');}
+    if(notify)protection?.changed();else protection?.refresh();
+  }
+  function renderProtection(snapshot) {
+    if(!protection)return;
+    const info=snapshot||protection.snapshot();
+    $$('[data-backup-panel]').forEach(el=>{
+      const active=el.contains(document.activeElement)?document.activeElement?.dataset.backup:null;
+      const oldHistory=el.querySelector('.backup-history'),historyOpen=oldHistory?.open,historyValue=el.querySelector('[data-backup-history]')?.value;
+      const markup=window.LEXI_BACKUP.panel(info);
+      if(el.innerHTML!==markup){
+        el.innerHTML=markup;
+        const history=el.querySelector('.backup-history'),select=el.querySelector('[data-backup-history]');
+        if(history)history.open=!!historyOpen;
+        if(select&&[...select.options].some(o=>o.value===historyValue))select.value=historyValue;
+        if(active)el.querySelector('[data-backup="'+active+'"]')?.focus({preventScroll:true});
+      }
+    });
+    const banner=$('#backup-banner');
+    if(banner){banner.innerHTML=window.LEXI_BACKUP.banner(info);banner.dataset.status=info.status;banner.hidden=false;}
+    const note=$('.local-note');if(note)note.innerHTML='<i></i>'+(info.status==='saved'?'Đã có bản sao tài khoản':info.enabled?'Sao lưu tài khoản · xem trạng thái':'Tiến độ trên máy · chưa sao lưu');
+  }
   function toast(message) {const el=$('#toast');el.textContent=message;el.classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('visible'),3600);}
   function dateKey(date=new Date()) {return [date.getFullYear(),String(date.getMonth()+1).padStart(2,'0'),String(date.getDate()).padStart(2,'0')].join('-');}
   function dayAgo(n) {const d=new Date();d.setDate(d.getDate()-n);return d;}
@@ -151,13 +174,14 @@
   }
   function renderProgress() {
     const days=Array.from({length:7},(_,i)=>{const d=dayAgo(6-i),n=state.daily[dateKey(d)]?.ids.length||0;return {label:['CN','T2','T3','T4','T5','T6','T7'][d.getDay()],n};}),max=Math.max(state.goal,...days.map(d=>d.n));
-    main.innerHTML=pageHead('LOOK HOW FAR YOU HAVE COME','Những bước nhỏ, có ý nghĩa.','Mỗi lần học đều được ghi lại — ngay trên thiết bị của bạn.')+statsMarkup()+'<div class="progress-grid"><section class="panel"><h2>Nhịp học 7 ngày qua</h2><p class="panel-subtitle">Số từ khác nhau đã luyện mỗi ngày</p><div class="activity-chart">'+days.map((d,i)=>'<div class="activity-day '+(i===6?'today':'')+'"><span>'+d.n+'</span><div class="bar-track"><i style="height:'+(d.n/max*100)+'%"></i></div><span>'+d.label+'</span></div>').join('')+'</div><div class="data-note">'+mastered().length+' từ đã có khoảng ôn từ 7 ngày trở lên. Tiến độ tăng khi bạn thực sự luyện, không chỉ khi mở thẻ.</div></section><section class="panel"><h2>Theo từng chủ đề</h2><p class="panel-subtitle">Từ đã luyện / tổng từ trong chủ đề</p>'+topics.map(t=>'<a class="topic-progress" href="#topic/'+t.id+'"><span class="topic-emoji" style="--tint:'+t.color+'">'+t.emoji+'</span><span class="name">'+esc(t.title)+'</span><span class="small-track"><i style="width:'+(topicLearned(t)/t.words.length*100)+'%"></i></span><small>'+topicLearned(t)+'/'+t.words.length+'</small></a>').join('')+'</section></div><div class="data-note">Tiến độ được lưu trong trình duyệt này và chưa tự đồng bộ giữa PC với iPhone. Bạn có thể xuất bản sao rồi nhập sang thiết bị khác.<div class="progress-actions"><button class="btn btn-outline" data-action="export">'+icon('download')+' Xuất tiến độ</button><button class="btn btn-outline" data-action="import">'+icon('upload')+' Nhập bản sao</button><button class="btn btn-ghost" data-action="settings">Cài đặt ứng dụng '+icon('arrow')+'</button></div></div>';
+    main.innerHTML=pageHead('LOOK HOW FAR YOU HAVE COME','Những bước nhỏ, có ý nghĩa.','Theo dõi việc học và giữ một bản tiến độ ngoài thiết bị.')+statsMarkup()+'<div class="progress-grid"><section class="panel"><h2>Nhịp học 7 ngày qua</h2><p class="panel-subtitle">Số từ khác nhau đã luyện mỗi ngày</p><div class="activity-chart">'+days.map((d,i)=>'<div class="activity-day '+(i===6?'today':'')+'"><span>'+d.n+'</span><div class="bar-track"><i style="height:'+(d.n/max*100)+'%"></i></div><span>'+d.label+'</span></div>').join('')+'</div><div class="data-note">'+mastered().length+' từ đã có khoảng ôn từ 7 ngày trở lên. Tiến độ tăng khi bạn thực sự luyện, không chỉ khi mở thẻ.</div></section><section class="panel"><h2>Theo từng chủ đề</h2><p class="panel-subtitle">Từ đã luyện / tổng từ trong chủ đề</p>'+topics.map(t=>'<a class="topic-progress" href="#topic/'+t.id+'"><span class="topic-emoji" style="--tint:'+t.color+'">'+t.emoji+'</span><span class="name">'+esc(t.title)+'</span><span class="small-track"><i style="width:'+(topicLearned(t)/t.words.length*100)+'%"></i></span><small>'+topicLearned(t)+'/'+t.words.length+'</small></a>').join('')+'</section></div><section class="progress-protection" aria-label="Sao lưu và bảo vệ tiến độ"><div data-backup-panel></div></section>';
   }
   function route() {const bits=(location.hash.slice(1)||'home').split('/');return {name:bits[0],id:bits[1]};}
   function render() {
     const r=route();updateNav(r.name);
     ({home:renderHome,topics:renderTopics,dictionary:renderDictionary,progress:renderProgress,review:renderReview,topic:()=>renderTopic(r.id)}[r.name]||renderHome)();
     document.title='Lexi — '+({home:'Hôm nay',topics:'Khám phá chủ đề',dictionary:'Từ điển',progress:'Tiến độ',review:'Ôn tập',topic:topicById.get(r.id)?.title}[r.name]||'Học từ vựng');
+    protection?.refresh();
   }
   function startSession(topicId,mode='learn') {
     const t=topicById.get(topicId);
@@ -227,21 +251,32 @@
     speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);if(voice)u.voice=voice;u.lang=voice?.lang||'en-US';u.rate=.85;u.onerror=e=>{if(!['canceled','interrupted'].includes(e.error))toast('Chưa phát được âm thanh. Hãy kiểm tra âm lượng hoặc giọng đọc tiếng Anh của thiết bị.');};speechSynthesis.speak(u);
   }
   function showSettings(){
-    settings.innerHTML='<div class="settings-shell"><div class="settings-head"><h2 id="settings-title">Góc nhỏ của bạn</h2><button class="icon-button" data-action="close-settings" aria-label="Đóng cài đặt">'+icon('close')+'</button></div><section class="settings-section"><h3>Nhịp học vừa sức</h3><label>Mục tiêu mỗi ngày <select id="daily-goal">'+[5,10,15,20].map(n=>'<option '+(n===state.goal?'selected':'')+' value="'+n+'">'+n+' từ / ngày</option>').join('')+'</select></label><p style="margin-top:10px">Thư viện dành cho B1–C1. Bạn có thể lọc trình độ trong Chủ đề và Từ điển.</p></section><section class="settings-section"><h3>Cài Lexi trên PC hoặc iPhone</h3><p>Mở như một ứng dụng, học nhanh hơn mỗi ngày.</p>'+(installPrompt?'<button class="btn btn-primary" data-action="install">'+icon('download')+' Cài ứng dụng</button>':'')+'<div class="install-device"><strong>Trên iPhone</strong><ol><li>Mở link Lexi trong Safari.</li><li>Chọn Chia sẻ → Thêm vào Màn hình chính.</li><li>Bật “Mở dưới dạng ứng dụng web” nếu có, rồi chọn Thêm.</li></ol></div><div class="install-device"><strong>Trên PC</strong><p>Mở bằng Chrome hoặc Edge, chọn biểu tượng cài ứng dụng ở thanh địa chỉ hoặc “Cài đặt trang dưới dạng ứng dụng” trong menu trình duyệt.</p></div></section><section class="settings-section"><h3>Học offline & phát âm</h3><p id="offline-detail">'+(offlineReady?'Đã lưu bộ từ và giao diện để học offline sau lần mở này.':offlineMessage)+'</p><p>Giọng phát âm do thiết bị cung cấp. Một số giọng cần mạng; ưu tiên giọng tiếng Anh đã tải trên máy.</p></section><section class="settings-section"><h3>Tiến độ thuộc về bạn</h3><p>'+ (storageAvailable?'Đang lưu trên trình duyệt này.':'Trình duyệt đang hạn chế lưu dữ liệu.')+' Chưa có đồng bộ tự động giữa các thiết bị. Xuất bản sao để chuyển tiến độ hoặc giữ dự phòng.</p><div class="progress-actions"><button class="btn btn-outline" data-action="export">'+icon('download')+' Xuất tiến độ</button><button class="btn btn-outline" data-action="import">'+icon('upload')+' Nhập bản sao</button></div></section><p class="privacy-note">Lexi không yêu cầu tài khoản và không gửi tiến độ học lên máy chủ.</p></div>';
-    settings.showModal();
+    settings.innerHTML='<div class="settings-shell"><div class="settings-head"><h2 id="settings-title">Góc nhỏ của bạn</h2><button class="icon-button" data-action="close-settings" aria-label="Đóng cài đặt">'+icon('close')+'</button></div><section class="settings-section"><div data-backup-panel></div></section><section class="settings-section"><h3>Nhịp học vừa sức</h3><label>Mục tiêu mỗi ngày <select id="daily-goal">'+[5,10,15,20].map(n=>'<option '+(n===state.goal?'selected':'')+' value="'+n+'">'+n+' từ / ngày</option>').join('')+'</select></label><p style="margin-top:10px">Thư viện dành cho B1–C1. Bạn có thể lọc trình độ trong Chủ đề và Từ điển.</p></section><section class="settings-section"><h3>Cài Lexi trên PC hoặc iPhone</h3><p>Mở như một ứng dụng, học nhanh hơn mỗi ngày.</p>'+(installPrompt?'<button class="btn btn-primary" data-action="install">'+icon('download')+' Cài ứng dụng</button>':'')+'<div class="install-device"><strong>Trên iPhone</strong><ol><li>Mở link Lexi trong Safari.</li><li>Chọn Chia sẻ → Thêm vào Màn hình chính.</li><li>Bật “Mở dưới dạng ứng dụng web” nếu có, rồi chọn Thêm.</li></ol></div><div class="install-device"><strong>Trên PC</strong><p>Mở bằng Chrome hoặc Edge, chọn biểu tượng cài ứng dụng ở thanh địa chỉ hoặc “Cài đặt trang dưới dạng ứng dụng” trong menu trình duyệt.</p></div></section><section class="settings-section"><h3>Học offline & phát âm</h3><p id="offline-detail">'+(offlineReady?'Đã lưu bộ từ và giao diện để học offline sau lần mở này.':offlineMessage)+'</p><p>Giọng phát âm do thiết bị cung cấp. Một số giọng cần mạng; ưu tiên giọng tiếng Anh đã tải trên máy.</p></section><p class="privacy-note">Bạn có thể học không cần tài khoản. Tiến độ chỉ được gửi lên máy chủ Lexi khi bạn bật sao lưu.</p></div>';
+    protection?.refresh();settings.showModal();
   }
-  function exportData(){const blob=new Blob([JSON.stringify({app:'lexi',...state},null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='lexi-tien-do-'+today()+'.json';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('Đã xuất bản sao tiến độ.');}
-  function importData(){const input=document.createElement('input');input.type='file';input.accept='.json,application/json';input.addEventListener('change',async()=>{const f=input.files?.[0];if(!f)return;if(f.size>2e6){toast('Tệp quá lớn. Hãy chọn bản sao JSON do Lexi xuất.');return;}try{const raw=JSON.parse(await f.text());if(raw.app!=='lexi')throw new Error();const valid=validate(raw);if(!confirm('Thay thế tiến độ trên thiết bị này bằng bản sao đã chọn?'))return;state=valid;save();if(settings.open)settings.close();render();toast('Đã khôi phục tiến độ học.');}catch{toast('Bản sao không hợp lệ. Hãy dùng tệp JSON được xuất từ Lexi.');}});input.click();}
+  function exportData(){const blob=new Blob([JSON.stringify({app:'lexi',...state},null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='lexi-tien-do-'+today()+'.json';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('Đã yêu cầu tải tệp dự phòng. Hãy kiểm tra thư mục tải về.');}
+  async function shareBackup(){
+    const file=new File([JSON.stringify({app:'lexi',...state},null,2)],'lexi-tien-do-'+today()+'.json',{type:'application/json'});
+    if(!navigator.share||!navigator.canShare?.({files:[file]})){exportData();return;}
+    try{await navigator.share({files:[file],title:'Bản sao tiến độ Lexi'});toast('Đã chia sẻ tệp. Nếu chọn Lưu vào Tệp, hãy kiểm tra vị trí bạn vừa chọn.');}
+    catch(error){if(error.name!=='AbortError'){exportData();}}
+  }
+  function importData(){const input=document.createElement('input');input.type='file';input.accept='.json,application/json';input.addEventListener('change',async()=>{const f=input.files?.[0];if(!f)return;if(f.size>2e6){toast('Tệp quá lớn. Hãy chọn bản sao JSON do Lexi xuất.');return;}try{const raw=JSON.parse(await f.text());if(raw.app!=='lexi')throw new Error();const valid=validate(raw);if(!confirm('Thay thế tiến độ trên thiết bị này bằng bản sao đã chọn?'))return;state=valid;initialReadFailed=false;save();if(settings.open)settings.close();render();toast('Đã khôi phục tiến độ học.');}catch{toast('Bản sao không hợp lệ. Hãy dùng tệp JSON được xuất từ Lexi.');}});input.click();}
   document.addEventListener('click',async e=>{
     const button=e.target.closest('button');if(!button)return;
     const d=button.dataset;
+    if(d.backup){
+      if(!protection)return;
+      if(d.backup==='history'){const select=button.closest('[data-backup-panel]')?.querySelector('[data-backup-history]');protection.restoreHistorical(Number(select?.value));return;}
+      ({connect:()=>protection.connect(),sync:()=>protection.sync(true),pause:()=>protection.pause(),restore:()=>protection.restore(),local:()=>protection.chooseLocal(),persist:()=>protection.checkPersistence(true)})[d.backup]?.();return;
+    }
     if(d.synonymSpeak){const term=synonymData[d.synonymSpeak]?.[Number(d.synonymIndex)];if(term)speakText(term.word);return;}
     if(d.speak){speak(d.speak);return;}if(d.favorite){favorite(d.favorite);if(route().name==='dictionary'&&filters.saved&&!lesson.open)updateResults('dictionary');return;}
     if(d.learn){startSession(d.learn);return;}if(d.quiz){startSession(d.quiz,'quiz');return;}if(d.grade){grade(d.grade);return;}if(d.choice){chooseAnswer(d.choice);return;}
     if(d.filter){filters.level=d.filter;render();return;}
     switch(d.action){
       case 'quick-learn':startSession(state.lastTopic||topics[0].id);break;
-      case 'settings':showSettings();break;case 'close-settings':settings.close();break;
+      case 'settings':case 'backup-settings':showSettings();break;case 'close-settings':settings.close();break;
       case 'review':location.hash='review';break;case 'start-review':startSession(null,'review');break;
       case 'flip':if(session){session.flipped=true;renderSession();}break;
       case 'close-lesson':case 'finish':closeLesson();break;
@@ -249,7 +284,7 @@
       case 'next':if(session?.answered)next();break;
       case 'saved-filter':filters.saved=!filters.saved;renderDictionary();break;
       case 'clear-filter':filters={level:'all',query:'',saved:false};render();break;
-      case 'export':exportData();break;case 'import':importData();break;
+      case 'export':exportData();break;case 'import':importData();break;case 'share-backup':shareBackup();break;
       case 'install':if(installPrompt){await installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;toast('Nếu đã chọn cài, Lexi sẽ có trong danh sách ứng dụng.');}break;
     }
   });
@@ -293,5 +328,21 @@
       worker.postMessage({type:'APP_READY'},[channel.port2]);
     }catch{offlineStatus('Chưa thể lưu nội dung offline trong trình duyệt này. Bạn vẫn có thể học khi có mạng.');}
   }
-  render();prepareOffline();
+  if(window.LEXI_BACKUP){
+    protection=window.LEXI_BACKUP.create({
+      read:()=>state,validate,hasLocal:()=>localPresent,initialError:()=>initialReadFailed,
+      localAvailable:()=>storageAvailable,canRestore:()=>!lesson.open,
+      replace:raw=>{state=validate(raw);initialReadFailed=false;const goalControl=$('#daily-goal');if(goalControl)goalControl.value=String(state.goal);save(false);render();},
+      confirm:message=>confirm(message),toast,onStatus:renderProtection
+    });
+    window.addEventListener('online',()=>protection.resume());
+    window.addEventListener('focus',()=>protection.resume());
+    document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')protection.resume();else protection.sync();});
+    window.addEventListener('pagehide',()=>protection.sync());
+  }
+  const resumeBackup=new URLSearchParams(location.search).get('backup')==='connect';
+  render();prepareOffline();protection?.start(resumeBackup);
+  if(resumeBackup){
+    showSettings();history.replaceState(null,'',location.pathname+location.hash);
+  }
 })();

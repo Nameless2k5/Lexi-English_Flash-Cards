@@ -15,6 +15,7 @@
   <link rel="stylesheet" href="styles.css">
   <script src="data.js" defer></script>
   <script src="synonyms.js" defer></script>
+  <script src="backup.js" defer></script>
   <script src="app.js" defer></script>
 </head>
 <body>
@@ -32,7 +33,7 @@
     <div class="sidebar-bottom">
       <div class="little-note"><span>✷</span><strong>Small steps.<br>Big possibilities.</strong><p>Mỗi ngày một chút,<br>tiến xa hơn một chút.</p></div>
       <button class="settings-link" data-action="settings"><span data-icon="settings"></span>Cài đặt & cài ứng dụng</button>
-      <div class="local-note"><i></i> Tiến độ lưu trên thiết bị</div>
+      <div class="local-note"><i></i> Tiến độ trên máy · chưa sao lưu</div>
     </div>
   </aside>
   <div class="app-shell">
@@ -41,6 +42,7 @@
       <form id="global-search" class="search"><span data-icon="search"></span><input id="search-input" type="search" placeholder="Tìm một từ tiếng Anh…" autocomplete="off" aria-label="Tìm từ tiếng Anh"><kbd>Ctrl K</kbd></form>
       <button class="level-pill" data-action="settings" aria-label="Cài đặt trình độ và ứng dụng">B1 → C1 <span class="profile-dot">L</span></button>
     </header>
+    <div id="backup-banner" class="backup-banner" role="status" hidden></div>
     <main id="main" tabindex="-1"></main>
     <footer class="page-footer"><span>Made for your curious mind.</span><span id="connection-status">Lexi · B1–C1</span></footer>
   </div>
