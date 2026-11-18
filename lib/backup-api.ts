@@ -1,10 +1,11 @@
 import catalog from "./lexi-catalog.json";
+import { validateProfile, type Profile } from "./profile-schema";
 
 type User = { userId: string; email: string };
 type BackupRow = { revision: number; state: string; updated_at: number };
 type Progress = { seen: number; success: number; interval: number; due: number };
 type Daily = { ids: string[]; xp: number; correct: number; answers: number };
-export type LearningState = { version: 1; goal: number; progress: Record<string, Progress>; favorites: string[]; daily: Record<string, Daily>; lastTopic: string | null };
+export type LearningState = { version: 1; goal: number; progress: Record<string, Progress>; favorites: string[]; daily: Record<string, Daily>; lastTopic: string | null; profile?: Profile };
 const ids = new Set(catalog.words);
 const topics = new Set(catalog.topics);
 const MAX_BODY = 2_000_000;
@@ -18,6 +19,7 @@ const strings = (value: unknown) => [...new Set(Array.isArray(value) ? value.fil
 export function validateState(raw: unknown): LearningState {
   if (!record(raw) || raw.version !== 1 || !record(raw.progress) || !record(raw.daily) || !Array.isArray(raw.favorites)) throw new Error("invalid_state");
   const next: LearningState = { version: 1, goal: [5, 10, 15, 20].includes(raw.goal) ? raw.goal : 10, progress: {}, favorites: strings(raw.favorites), daily: {}, lastTopic: topics.has(raw.lastTopic) ? raw.lastTopic : null };
+  if (Object.hasOwn(raw,'profile')) next.profile=validateProfile(raw.profile);
   for (const [id, p] of Object.entries(raw.progress)) if (ids.has(id) && record(p)) {
     next.progress[id] = { seen: number(p.seen, 10000), success: number(p.success, 10000), interval: number(p.interval, 60), due: number(p.due, Date.now() + 366 * 86400000) };
   }
@@ -78,6 +80,7 @@ export async function backupRequest(request: Request, user: User | null, db?: D1
     // An older cached app validates only the original 160 IDs. Never let it
     // silently drop TOEIC progress written by an updated device.
     if (existing?.state.includes('toeic-') && body.catalogVersion !== 2) return json({ error: "catalog_update_required" }, 409);
+    if (existing && validateState(JSON.parse(existing.state)).profile && body.profileVersion !== 1) return json({ error: "profile_update_required" }, 409);
     if (existing && learned(validateState(JSON.parse(existing.state))) > 0 && learned(state) === 0) return json({ error: "empty_replacement" }, 422);
     const writeId = crypto.randomUUID(), now = Date.now(), serialized = JSON.stringify(state);
     const write = body.baseRevision === 0

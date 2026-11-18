@@ -20,7 +20,8 @@
     volume:'M11 4 5 9H2v6h3l6 5zM15 8a6 6 0 0 1 0 8M18 5a10 10 0 0 1 0 14',
     close:'m6 6 12 12M6 18 18 6',check:'m5 12 4 4L19 6',
     download:'M12 3v12M7 10l5 5 5-5M4 16v5h16v-5',upload:'M12 16V3M7 8l5-5 5 5M4 16v5h16v-5',
-    bolt:'m14 2-9 12h7l-2 8 9-13h-7z'
+    bolt:'m14 2-9 12h7l-2 8 9-13h-7z',
+    user:'M20 21v-2a7 7 0 0 0-14 0v2M17 7a5 5 0 1 1-10 0 5 5 0 0 1 10 0'
   };
   const icon = name => '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="'+(paths[name]||paths.star)+'"/></svg>';
   $$('[data-icon]').forEach(el=>el.innerHTML=icon(el.dataset.icon));
@@ -38,10 +39,12 @@
   let storageAvailable=true, offlineReady=false, installPrompt=null, session=null, toastTimer;
   let offlineMessage='Đang chuẩn bị bộ từ để học offline. Hãy giữ kết nối mạng trong lần mở đầu.';
   let filters={level:'all',query:'',saved:false,toeic:'all'};
-  const defaults=()=>({version:1,goal:10,progress:{},favorites:[],daily:{},lastTopic:null});
+  const defaultProfile=()=>window.LEXI_PROFILE?.defaults()||{nickname:'',avatar:'sprout',color:'lavender',image:null};
+  const defaults=()=>({version:1,goal:10,progress:{},favorites:[],daily:{},lastTopic:null,profile:defaultProfile()});
   function validate(raw) {
     if(!raw||raw.version!==1) throw new Error('Invalid data');
     const next=defaults(),number=(n,max=1e6)=>typeof n==='number'&&Number.isFinite(n)&&n>=0?Math.floor(Math.min(n,max)):0;
+    next.profile=window.LEXI_PROFILE?.validate(raw.profile)||defaultProfile();
     next.goal=[5,10,15,20].includes(raw.goal)?raw.goal:10;
     next.favorites=[...new Set(Array.isArray(raw.favorites)?raw.favorites.filter(id=>byId.has(id)):[])];
     if(topicById.has(raw.lastTopic)) next.lastTopic=raw.lastTopic;
@@ -54,6 +57,7 @@
     return next;
   }
   let state=defaults(),localPresent=false,initialReadFailed=false,protection=null;
+  let profileDraft=null,profileImageRequest=0,profilePhotoBusy=false;
   try { const raw=localStorage.getItem(STORAGE);if(raw){localPresent=true;state=validate(JSON.parse(raw));} } catch {storageAvailable=false;initialReadFailed=true;}
   function save(notify=true) {
     localPresent=true;
@@ -78,6 +82,7 @@
     const banner=$('#backup-banner');
     if(banner){banner.innerHTML=window.LEXI_BACKUP.banner(info);banner.dataset.status=info.status;banner.hidden=false;}
     const note=$('.local-note');if(note)note.innerHTML='<i></i>'+(info.status==='saved'?'Đã có bản sao tài khoản':info.enabled?'Sao lưu tài khoản · xem trạng thái':'Tiến độ trên máy · chưa sao lưu');
+    paintProfileAccount(info);
   }
   function toast(message) {const el=$('#toast');el.textContent=message;el.classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('visible'),3600);}
   function dateKey(date=new Date()) {return [date.getFullYear(),String(date.getMonth()+1).padStart(2,'0'),String(date.getDate()).padStart(2,'0')].join('-');}
@@ -118,6 +123,44 @@
     $('#connection-status').textContent=offlineReady?'Sẵn sàng học offline':navigator.onLine?'Lexi · A2–C1':'Đang offline';
   }
   function pageHead(eyebrow,title,subtitle,aside='') {return '<div class="page-head"><div><div class="eyebrow">'+eyebrow+'</div><h1>'+title+'</h1><p>'+subtitle+'</p></div>'+aside+'</div>';}
+  function paintIdentity(){
+    const api=window.LEXI_PROFILE;if(!api)return;
+    $$('[data-profile-avatar]').forEach(el=>el.innerHTML=api.avatar(state.profile,36));
+    $$('[data-profile-name]').forEach(el=>el.textContent=state.profile.nickname||'Hồ sơ');
+  }
+  function paintProfileAccount(info=protection?.snapshot()){
+    const el=$('[data-profile-account]');if(!el)return;
+    el.textContent=info?.user?'Đang dùng tài khoản '+info.user.email:info?.enabled?'Đăng nhập để tiếp tục sao lưu hồ sơ.':'Hồ sơ đang lưu trên thiết bị này.';
+  }
+  function profileFeedback(message,error=false){const el=$('#profile-feedback');if(el){el.textContent=message;el.dataset.error=String(error);}}
+  function paintProfileDraft(){
+    const api=window.LEXI_PROFILE;if(!api||!profileDraft)return;
+    const preview=$('#profile-preview');if(preview)preview.innerHTML=api.avatar(profileDraft,112);
+    const name=$('#profile-preview-name');if(name)name.textContent=api.cleanName(profileDraft.nickname)||'Một người bạn của Lexi';
+    const count=$('#nickname-count');if(count)count.textContent=Array.from(api.cleanName(profileDraft.nickname)).length+'/24 ký tự';
+    $$('[data-profile-preset]').forEach(b=>{const on=!profileDraft.image&&b.dataset.profilePreset===profileDraft.avatar;b.classList.toggle('selected',on);b.setAttribute('aria-pressed',String(on));});
+    $$('[data-profile-color]').forEach(b=>{const on=b.dataset.profileColor===profileDraft.color;b.classList.toggle('selected',on);b.setAttribute('aria-pressed',String(on));});
+    const remove=$('[data-action="profile-remove-photo"]');if(remove)remove.hidden=!profileDraft.image;
+    const saveButton=$('[data-profile-save]');if(saveButton){saveButton.disabled=profilePhotoBusy;saveButton.textContent=profilePhotoBusy?'Đang xử lý ảnh…':'Lưu hồ sơ';}
+  }
+  function renderProfile(){
+    const api=window.LEXI_PROFILE;if(!api){main.innerHTML=pageHead('YOUR LITTLE CORNER','Chưa tải được hồ sơ.','Hãy mở lại Lexi khi có kết nối mạng để nhận đầy đủ bản cập nhật.');return;}
+    if(!profileDraft)profileDraft=api.validate(state.profile);
+    main.innerHTML=pageHead('MAKE THIS SPACE YOURS','Một góc nhỏ, rất là bạn.','Đặt biệt danh, chọn một gương mặt thân quen và làm mới không gian học mỗi ngày.')+
+      '<div class="profile-layout"><section class="profile-editor panel"><form id="profile-form"><div class="profile-preview"><div id="profile-preview"></div><span class="eyebrow">YOUR WORDS. YOUR WORLD.</span><h2 id="profile-preview-name"></h2><p>Đây là cách bạn xuất hiện trong Lexi.</p></div><div class="profile-field"><label for="profile-nickname">Bạn muốn Lexi gọi mình là gì?</label><input id="profile-nickname" name="nickname" type="text" maxlength="48" autocomplete="nickname" placeholder="Ví dụ: Mèo chăm học" value="'+esc(profileDraft.nickname)+'" aria-describedby="nickname-count"><div class="profile-field-help"><span>Biệt danh trong Lexi · có thể để trống để dùng mặc định</span><span id="nickname-count"></span></div></div>'+
+      '<fieldset class="profile-choice"><legend>Chọn avatar của bạn</legend><div class="avatar-grid">'+api.avatars.map(([id,emoji,label])=>'<button type="button" class="avatar-option" data-profile-preset="'+id+'" aria-label="Avatar '+esc(label)+'" aria-pressed="false"><span aria-hidden="true">'+emoji+'</span></button>').join('')+'</div></fieldset>'+
+      '<fieldset class="profile-choice"><legend>Một màu yêu thích</legend><div class="avatar-colors">'+api.colors.map(([id,hex,label])=>'<button type="button" class="avatar-color" style="--swatch:'+hex+'" data-profile-color="'+id+'" aria-label="'+esc(label)+'" aria-pressed="false"></button>').join('')+'</div></fieldset>'+
+      '<div class="profile-photo-actions"><button type="button" class="btn btn-outline" data-action="profile-upload">'+icon('upload')+' Chọn ảnh từ máy</button><button type="button" class="btn btn-ghost" data-action="profile-remove-photo" hidden>Bỏ ảnh đã chọn</button><input id="profile-photo" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" hidden></div><p class="profile-photo-note">Ảnh tối đa 8 MB. Lexi cắt vuông ở giữa và thu nhỏ trên thiết bị trước khi lưu. Bạn có thể dùng avatar có sẵn bất cứ lúc nào.</p><p id="profile-feedback" class="profile-feedback" role="status" aria-live="polite"></p><div class="profile-save-row"><button class="btn btn-primary" type="submit" data-profile-save>Lưu hồ sơ</button><button class="btn btn-ghost" type="button" data-action="profile-reset">Bỏ thay đổi</button></div></form></section>'+
+      '<aside class="profile-aside"><section class="profile-learning panel"><span class="profile-spark" aria-hidden="true">✦</span><div class="eyebrow">A LITTLE MORE YOU, EVERY DAY</div><h2>Mỗi ngày thêm<br>một phiên bản mới.</h2><p>Biệt danh mới, tinh thần mới. Những từ bạn đã học vẫn luôn ở đây.</p><div class="profile-metrics"><div><strong>'+learned().length+'</strong><span>từ đã luyện</span></div><div><strong>'+streak()+'</strong><span>ngày liên tiếp</span></div><div><strong>'+totalXP()+'</strong><span>XP khám phá</span></div></div><a class="btn btn-secondary" href="#topics">Tiếp tục khám phá '+icon('arrow')+'</a></section><section class="profile-account panel"><h3>Hồ sơ đi cùng bạn</h3><p data-profile-account></p><p>Khi bật sao lưu, nickname và avatar được lưu cùng tiến độ trên tài khoản Lexi. Dùng cùng tài khoản ChatGPT để khôi phục trên thiết bị khác.</p><button class="text-link" type="button" data-action="backup-settings">Tài khoản & sao lưu '+icon('arrow')+'</button></section></aside></div>';
+    paintProfileDraft();paintProfileAccount();
+  }
+  async function chooseProfilePhoto(file){
+    if(!file||!profileDraft)return;
+    const api=window.LEXI_PROFILE,token=++profileImageRequest;profilePhotoBusy=true;paintProfileDraft();profileFeedback('Đang thu nhỏ ảnh trên thiết bị…');
+    try{const image=await api.photo(file);if(token!==profileImageRequest||route().name!=='profile')return;profileDraft.image=image;profileFeedback('Ảnh đã sẵn sàng. Bấm “Lưu hồ sơ” để áp dụng.');}
+    catch(error){if(token===profileImageRequest)profileFeedback(error.message||'Chưa xử lý được ảnh. Hãy chọn ảnh khác.',true);}
+    finally{if(token===profileImageRequest){profilePhotoBusy=false;paintProfileDraft();}const input=$('#profile-photo');if(input)input.value='';}
+  }
   function toeicCallout(){
     if(!toeicTopics.length)return '';
     return '<a class="toeic-callout" href="#toeic"><span class="toeic-symbol" aria-hidden="true">🎯</span><div><span class="eyebrow">YOUR NEXT MILESTONE</span><h2>TOEIC 400 → 800</h2><p>'+toeicTopics.reduce((n,t)=>n+t.words.length,0)+' từ & cụm từ · 5 mục tiêu · Học theo ngữ cảnh công việc</p></div><span class="toeic-callout-arrow">Khám phá '+icon('arrow')+'</span></a>';
@@ -146,7 +189,7 @@
     const n=dayData().ids.length,pct=Math.min(100,n/state.goal*100),featured=words.find(w=>w.word==='resilient')||words[0];
     const weeks=Array.from({length:7},(_,i)=>{const d=dayAgo(6-i),key=dateKey(d),done=state.daily[key]?.ids.length;return '<span class="week-day '+(done?'done ':'')+(i===6?'today':'')+'"><span>'+['CN','T2','T3','T4','T5','T6','T7'][d.getDay()]+'</span><i>'+(done?'✓':'·')+'</i></span>';}).join('');
     const date=new Intl.DateTimeFormat('vi-VN',{weekday:'short',day:'numeric',month:'short'}).format(new Date());
-    main.innerHTML=pageHead('MAKE ROOM FOR NEW WORDS','Chào bạn, cùng học nhé <span aria-hidden="true">👋</span>','Một hành trình nhỏ hôm nay. Một vốn từ phong phú ngày mai.','<span class="date-chip">'+icon('calendar')+esc(date)+'</span>')+
+    main.innerHTML=pageHead('MAKE ROOM FOR NEW WORDS','Chào '+esc(state.profile.nickname||'bạn')+', cùng học nhé <span aria-hidden="true">👋</span>','Một hành trình nhỏ hôm nay. Một vốn từ phong phú ngày mai.','<span class="date-chip">'+icon('calendar')+esc(date)+'</span>')+
     '<div class="dashboard-top"><section class="hero"><div class="hero-copy"><div class="eyebrow">LESS SCROLLING, MORE LEARNING</div><h2>Mỗi từ mới,<br>một <em>góc nhìn mới.</em></h2><p>Khám phá tiếng Anh qua những chủ đề bạn quan tâm. Chỉ 10 từ mỗi lần học.</p><button class="btn btn-primary" data-action="quick-learn">Bắt đầu học '+icon('arrow')+'</button></div><div class="hero-art" aria-hidden="true"><div class="art-circle"></div><div class="art-card back"></div><div class="art-card"><span class="art-tag">A WORD TO KEEP</span><strong class="art-word">'+esc(featured.word)+'</strong><span class="art-ipa">'+esc(featured.ipa)+'</span><span class="art-meaning">'+esc(featured.meaning)+'</span></div><span class="art-spark">✦</span><span class="art-sticker">a little progress, every day ✨</span></div></section><section class="goal-card"><div class="card-mini-head">Mục tiêu hôm nay '+icon('target')+'</div><div class="goal-ring"><svg viewBox="0 0 123 123" aria-hidden="true"><circle cx="61.5" cy="61.5" r="49"/><circle cx="61.5" cy="61.5" r="49" stroke-dasharray="307.88" stroke-dashoffset="'+(307.88*(1-pct/100))+'"/></svg><div class="ring-label"><strong>'+n+'<span> / '+state.goal+'</span></strong><small>từ đã luyện hôm nay</small></div></div><div class="week-days">'+weeks+'</div></section></div>'+statsMarkup()+toeicCallout()+
     '<section><div class="section-head"><div><h2>Chủ đề dành cho bạn</h2><p>Từ những điều gần gũi, đến những ý tưởng lớn.</p></div><a class="text-link" href="#topics">Xem tất cả '+icon('arrow')+'</a></div><div class="topic-grid">'+topics.slice(0,6).map(topicCard).join('')+'</div></section><div class="quote-strip"><span>✷</span><div><p>Một chút tập trung hôm nay. Thêm nhiều tự tin ngày mai.</p><small>Không cần học thật nhiều — chỉ cần quay lại đều đặn.</small></div><button class="btn btn-secondary" data-action="review">Ôn tập hôm nay '+icon('arrow')+'</button></div>';
   }
@@ -198,9 +241,10 @@
   }
   function route() {const bits=(location.hash.slice(1)||'home').split('/');return {name:bits[0],id:bits[1]};}
   function render() {
+    paintIdentity();
     const r=route();updateNav(r.name);
-    ({home:renderHome,topics:renderTopics,toeic:renderToeic,dictionary:renderDictionary,progress:renderProgress,review:renderReview,topic:()=>renderTopic(r.id)}[r.name]||renderHome)();
-    document.title='Lexi — '+({home:'Hôm nay',topics:'Khám phá chủ đề',toeic:'TOEIC 400–800',dictionary:'Từ điển',progress:'Tiến độ',review:'Ôn tập',topic:topicById.get(r.id)?.title}[r.name]||'Học từ vựng');
+    ({home:renderHome,profile:renderProfile,topics:renderTopics,toeic:renderToeic,dictionary:renderDictionary,progress:renderProgress,review:renderReview,topic:()=>renderTopic(r.id)}[r.name]||renderHome)();
+    document.title='Lexi — '+({home:'Hôm nay',profile:'Hồ sơ của bạn',topics:'Khám phá chủ đề',toeic:'TOEIC 400–800',dictionary:'Từ điển',progress:'Tiến độ',review:'Ôn tập',topic:topicById.get(r.id)?.title}[r.name]||'Học từ vựng');
     protection?.refresh();
   }
   function startSession(topicId,mode='learn') {
@@ -281,7 +325,7 @@
     try{await navigator.share({files:[file],title:'Bản sao tiến độ Lexi'});toast('Đã chia sẻ tệp. Nếu chọn Lưu vào Tệp, hãy kiểm tra vị trí bạn vừa chọn.');}
     catch(error){if(error.name!=='AbortError'){exportData();}}
   }
-  function importData(){const input=document.createElement('input');input.type='file';input.accept='.json,application/json';input.addEventListener('change',async()=>{const f=input.files?.[0];if(!f)return;if(f.size>2e6){toast('Tệp quá lớn. Hãy chọn bản sao JSON do Lexi xuất.');return;}try{const raw=JSON.parse(await f.text());if(raw.app!=='lexi')throw new Error();const valid=validate(raw);if(!confirm('Thay thế tiến độ trên thiết bị này bằng bản sao đã chọn?'))return;state=valid;initialReadFailed=false;save();if(settings.open)settings.close();render();toast('Đã khôi phục tiến độ học.');}catch{toast('Bản sao không hợp lệ. Hãy dùng tệp JSON được xuất từ Lexi.');}});input.click();}
+  function importData(){const input=document.createElement('input');input.type='file';input.accept='.json,application/json';input.addEventListener('change',async()=>{const f=input.files?.[0];if(!f)return;if(f.size>2e6){toast('Tệp quá lớn. Hãy chọn bản sao JSON do Lexi xuất.');return;}try{const raw=JSON.parse(await f.text());if(raw.app!=='lexi')throw new Error();const valid=validate(raw);if(!confirm('Thay thế tiến độ trên thiết bị này bằng bản sao đã chọn?'))return;state=valid;profileDraft=null;profileImageRequest++;profilePhotoBusy=false;initialReadFailed=false;save();if(settings.open)settings.close();render();toast('Đã khôi phục tiến độ học.');}catch{toast('Bản sao không hợp lệ. Hãy dùng tệp JSON được xuất từ Lexi.');}});input.click();}
   document.addEventListener('click',async e=>{
     if(e.target.closest('a[data-backup-signout]')){if(!protection?.prepareSignOut())e.preventDefault();return;}
     const button=e.target.closest('button');if(!button)return;
@@ -291,12 +335,17 @@
       if(d.backup==='history'){const select=button.closest('[data-backup-panel]')?.querySelector('[data-backup-history]');protection.restoreHistorical(Number(select?.value));return;}
       ({connect:()=>protection.connect(),sync:()=>protection.sync(true),pause:()=>protection.pause(),restore:()=>protection.restore(),local:()=>protection.chooseLocal(),persist:()=>protection.checkPersistence(true)})[d.backup]?.();return;
     }
+    if(d.profilePreset){profileImageRequest++;profilePhotoBusy=false;profileDraft.avatar=d.profilePreset;profileDraft.image=null;paintProfileDraft();profileFeedback('Bấm “Lưu hồ sơ” để áp dụng.');return;}
+    if(d.profileColor){profileDraft.color=d.profileColor;paintProfileDraft();profileFeedback('Bấm “Lưu hồ sơ” để áp dụng.');return;}
     if(d.toeicBand){filters.toeic=d.toeicBand;filters.level='all';renderDictionary();return;}
     if(d.synonymSpeak){const term=synonymData[d.synonymSpeak]?.[Number(d.synonymIndex)];if(term)speakText(term.word);return;}
     if(d.speak){speak(d.speak);return;}if(d.favorite){favorite(d.favorite);if(route().name==='dictionary'&&filters.saved&&!lesson.open)updateResults('dictionary');return;}
     if(d.learn){startSession(d.learn);return;}if(d.quiz){startSession(d.quiz,'quiz');return;}if(d.grade){grade(d.grade);return;}if(d.choice){chooseAnswer(d.choice);return;}
     if(d.filter){filters.level=d.filter;render();return;}
     switch(d.action){
+      case 'profile-upload':$('#profile-photo')?.click();break;
+      case 'profile-remove-photo':profileImageRequest++;profilePhotoBusy=false;profileDraft.image=null;paintProfileDraft();profileFeedback('Bấm “Lưu hồ sơ” để áp dụng.');break;
+      case 'profile-reset':profileImageRequest++;profilePhotoBusy=false;profileDraft=window.LEXI_PROFILE.validate(state.profile);$('#profile-nickname').value=profileDraft.nickname;paintProfileDraft();profileFeedback('Đã trở về hồ sơ đang lưu.');break;
       case 'quick-learn':startSession(state.lastTopic||topics[0].id);break;
       case 'settings':case 'backup-settings':showSettings();break;case 'close-settings':settings.close();break;
       case 'review':location.hash='review';break;case 'start-review':startSession(null,'review');break;
@@ -310,8 +359,15 @@
       case 'install':if(installPrompt){await installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;toast('Nếu đã chọn cài, Lexi sẽ có trong danh sách ứng dụng.');}break;
     }
   });
-  document.addEventListener('input',e=>{if(e.target.id==='filter-input'){filters.query=e.target.value;updateResults(route().name);}});
-  document.addEventListener('change',e=>{if(e.target.id==='daily-goal'){state.goal=Number(e.target.value);save();render();toast('Đã cập nhật mục tiêu mỗi ngày.');}});
+  document.addEventListener('input',e=>{if(e.target.id==='profile-nickname'&&profileDraft){profileDraft.nickname=e.target.value;paintProfileDraft();profileFeedback('');}if(e.target.id==='filter-input'){filters.query=e.target.value;updateResults(route().name);}});
+  document.addEventListener('change',e=>{if(e.target.id==='profile-photo'){chooseProfilePhoto(e.target.files?.[0]);return;}if(e.target.id==='daily-goal'){state.goal=Number(e.target.value);save();render();toast('Đã cập nhật mục tiêu mỗi ngày.');}});
+  document.addEventListener('submit',e=>{
+    if(e.target.id!=='profile-form')return;e.preventDefault();if(profilePhotoBusy||!profileDraft)return;
+    const api=window.LEXI_PROFILE,nickname=api.cleanName($('#profile-nickname').value);
+    if(Array.from(nickname).length>24){profileFeedback('Biệt danh tối đa 24 ký tự nhé.',true);$('#profile-nickname').focus();return;}
+    profileDraft.nickname=nickname;state.profile=api.validate(profileDraft);save();paintIdentity();paintProfileDraft();
+    profileFeedback(storageAvailable?'Đã lưu hồ sơ trên máy.'+(protection?.snapshot().enabled?' Bản mới đang được kiểm tra để sao lưu.':' Bật sao lưu để giữ hồ sơ khi đổi thiết bị.'):'Máy chưa lưu được hồ sơ. Hãy sao lưu tài khoản hoặc xuất tệp dự phòng.',!storageAvailable);
+  });
   $('#global-search').addEventListener('submit',e=>{e.preventDefault();filters={level:'all',query:$('#search-input').value.trim(),saved:false};if(route().name==='dictionary')renderDictionary();else location.hash='dictionary';$('#search-input').blur();});
   document.addEventListener('keydown',e=>{
     if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();$('#search-input').focus();return;}
@@ -326,7 +382,7 @@
       if(session.flipped&&/^[1-3]$/.test(e.key)){e.preventDefault();grade(['hard','ok','good'][Number(e.key)-1]);}
     }
   });
-  window.addEventListener('hashchange',()=>{filters={level:'all',query:route().name==='dictionary'?filters.query:'',saved:false};render();window.scrollTo({top:0});});
+  window.addEventListener('hashchange',()=>{profileImageRequest++;profilePhotoBusy=false;filters={level:'all',query:route().name==='dictionary'?filters.query:'',saved:false};render();window.scrollTo({top:0});});
   window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e;});
   window.addEventListener('online',()=>updateNav(route().name));window.addEventListener('offline',()=>updateNav(route().name));
   function offlineStatus(message){
@@ -354,7 +410,7 @@
     protection=window.LEXI_BACKUP.create({
       read:()=>state,validate,hasLocal:()=>localPresent,initialError:()=>initialReadFailed,
       localAvailable:()=>storageAvailable,canRestore:()=>!lesson.open,
-      replace:raw=>{state=validate(raw);initialReadFailed=false;const goalControl=$('#daily-goal');if(goalControl)goalControl.value=String(state.goal);save(false);render();},
+      replace:raw=>{state=validate(raw);profileDraft=null;profileImageRequest++;profilePhotoBusy=false;initialReadFailed=false;const goalControl=$('#daily-goal');if(goalControl)goalControl.value=String(state.goal);save(false);render();},
       confirm:message=>confirm(message),toast,onStatus:renderProtection
     });
     window.addEventListener('online',()=>protection.resume());

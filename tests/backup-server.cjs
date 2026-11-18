@@ -96,6 +96,14 @@ async function main() {
     eq((await call('PUT',toeicUser,payload(1,state(2),toeicUser.userId))).body.error,'catalog_update_required','old cached client cannot remove TOEIC data');
     eq(Object.keys((await call('GET',toeicUser)).body.backup.state.progress).length,101,'old-client write leaves new progress intact');
     eq((await call('PUT',toeicUser,{...payload(1,mixed,toeicUser.userId),catalogVersion:2})).status,200,'updated client can continue saving TOEIC progress');
+    const profileUser={userId:'profile-user',email:'profile@example.test'},profileState=state(2);
+    profileState.profile={nickname:'Linh 🌱',avatar:'fox',color:'mint',image:'data:image/jpeg;base64,'+Buffer.from([255,216,255,0,255,217]).toString('base64')};
+    eq((await call('PUT',profileUser,{...payload(0,profileState,profileUser.userId),catalogVersion:2,profileVersion:1})).status,200,'profile and avatar save to actual D1');
+    eq((await call('GET',profileUser)).body.backup.state,validateState(profileState),'nickname image and progress restore together');
+    eq((await call('PUT',profileUser,payload(1,state(3),profileUser.userId))).body.error,'profile_update_required','old cached client cannot erase saved profile');
+    eq((await call('GET',profileUser)).body.backup.state.profile,profileState.profile,'profile untouched by old client');
+    eq((await call('PUT',profileUser,{...payload(1,{...profileState,profile:{nickname:'Mèo',avatar:'cat',color:'pink',image:null}},profileUser.userId),catalogVersion:2,profileVersion:1})).status,200,'updated client can change avatar');
+    eq((await call('GET',profileUser,undefined,{query:'?revision=1'})).body.backup.state.profile,profileState.profile,'history can restore previous avatar and nickname');
     console.log(`PASS: ${checks} assertions against real Miniflare D1/SQLite`);
   } finally { await mf.dispose(); }
 }

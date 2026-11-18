@@ -103,3 +103,9 @@ Mở #toeic từ thanh bên hoặc thẻ trên Hôm nay/Chủ đề. Từ điể
 Ngữ cảnh đối chiếu: https://www.ets.org/pdfs/toeic/toeic-listening-reading-test-examinee-handbook.pdf (văn phòng, nhân sự, mua hàng, tài chính, vận chuyển, hợp đồng). Mô tả năng lực tham khảo: https://www.ets.org/pdfs/toeic/toeic-listening-reading-score-descriptors.pdf (điểm từng kỹ năng, không phải tổng điểm hay danh sách từ).
 
 Chạy npm test để kiểm tra nội dung, ID, mọi câu điền từ, bộ lọc, sao lưu và khôi phục cả 100 từ mới trên D1/SQLite.
+
+## Hồ sơ cá nhân
+
+Mở #profile từ avatar góc trên hoặc thanh bên. Nickname tối đa 24 ký tự Unicode; chọn 12 avatar, 6 màu nền hoặc tải ảnh từ thiết bị. Nhấn Lưu hồ sơ để áp dụng vào thanh trên và lời chào. Có nút bỏ thay đổi; ảnh được cắt vuông ở giữa thành JPEG 192×192 ngay trên thiết bị, bỏ metadata gốc và giới hạn dữ liệu ảnh 90.000 ký tự. File đầu vào tối đa 8 MB; HEIC chỉ đọc khi trình duyệt hỗ trợ. Không nhận SVG hoặc URL ảnh bên ngoài.
+
+Hồ sơ nằm trong state.profile bên cạnh tiến độ v1, được đưa vào xuất/nhập JSON và sao lưu D1 khi người dùng bật. Không đổi nickname/avatar tài khoản ChatGPT. Backend xác thực và làm sạch lại dữ liệu, giữ lịch sử avatar trong các snapshot cũ. profileVersion bảo vệ hồ sơ khỏi các app cache cũ chưa biết trường mới; bản đã có profile yêu cầu client mới khi ghi. Client/server validator có bộ kiểm tra parity, dữ liệu v1 cũ không mất tiến độ. Khi đổi tài khoản, dùng cơ chế chọn bản local/cloud hiện có.

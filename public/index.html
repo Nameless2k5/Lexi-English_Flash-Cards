@@ -16,6 +16,7 @@
   <script src="data.js" defer></script>
   <script src="toeic.js" defer></script>
   <script src="synonyms.js" defer></script>
+  <script src="profile.js" defer></script>
   <script src="backup.js" defer></script>
   <script src="app.js" defer></script>
 </head>
@@ -31,6 +32,7 @@
       <a href="#review" data-nav="review"><span data-icon="repeat"></span>Ôn tập<span class="nav-count" id="due-badge" hidden></span></a>
       <a href="#dictionary" data-nav="dictionary"><span data-icon="book"></span>Từ điển của bạn</a>
       <a href="#progress" data-nav="progress"><span data-icon="chart"></span>Tiến độ học</a>
+      <a href="#profile" data-nav="profile"><span data-icon="user"></span>Hồ sơ của bạn</a>
     </nav>
     <div class="sidebar-bottom">
       <div class="little-note"><span>✷</span><strong>Small steps.<br>Big possibilities.</strong><p>Mỗi ngày một chút,<br>tiến xa hơn một chút.</p></div>
@@ -42,7 +44,7 @@
     <header class="topbar">
       <div class="topbar-title"><span class="tiny-leaf">✦</span> Một chút mỗi ngày.</div>
       <form id="global-search" class="search"><span data-icon="search"></span><input id="search-input" type="search" placeholder="Tìm một từ tiếng Anh…" autocomplete="off" aria-label="Tìm từ tiếng Anh"><kbd>Ctrl K</kbd></form>
-      <button class="level-pill" data-action="settings" aria-label="Cài đặt trình độ và ứng dụng">A2 → C1 <span class="profile-dot">L</span></button>
+      <a href="#profile" class="profile-trigger" aria-label="Mở hồ sơ của bạn"><span data-profile-avatar></span><span data-profile-name>Hồ sơ</span></a>
     </header>
     <div id="backup-banner" class="backup-banner" role="status" hidden></div>
     <main id="main" tabindex="-1"></main>
