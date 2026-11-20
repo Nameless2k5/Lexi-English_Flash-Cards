@@ -1,10 +1,10 @@
 # Lexi — học từ vựng tiếng Anh B1–C1
 
-Ứng dụng PWA cho người Việt, dùng trên PC và iPhone. Thư viện hiện có 260 mục: 160 từ theo chủ đề và 100 từ/cụm từ TOEIC. Giao diện HTML/CSS/JavaScript nhẹ, không tải framework hay font ngoài trên thiết bị. Máy chủ Vinext/Cloudflare Workers bổ sung sao lưu D1 theo tài khoản; không cần API từ dịch vụ AI.
+Ứng dụng PWA cho người Việt, dùng trên PC và iPhone. Từ điển có **260 từ gốc** (gồm cả từ và cụm từ). Trong đó, 160 mục thuộc 10 chủ đề tổng quát và 100 mục thuộc 5 nhóm TOEIC từ 400 đến 800 điểm. Giao diện HTML/CSS/JavaScript nhẹ, không tải framework hay font ngoài trên thiết bị. Máy chủ Vinext/Cloudflare Workers bổ sung sao lưu D1 theo tài khoản; không cần API từ dịch vụ AI.
 
 ## Chức năng
 
-- 10 chủ đề, 160 từ/cụm từ với phiên âm UK, nghĩa, ví dụ và bản dịch.
+- Cả 260 từ gốc đều có phiên âm UK, nghĩa, ví dụ và bản dịch.
 - Thẻ học theo phiên tối đa 10 từ; tự đánh giá mức nhớ.
 - Trắc nghiệm nghĩa và câu ví dụ có chỗ trống; kết quả và XP tính từ thao tác thật.
 - Ôn tập theo lịch: chưa nhớ → 10 phút, cần ôn → 1 ngày, đã nhớ → 3 ngày rồi tăng dần, tối đa 60 ngày.
@@ -42,7 +42,7 @@ Preview portable giả lập đăng nhập tại /signin-with-chatgpt bằng tà
 
 ## Cấu trúc
 
-- public/: giao diện PWA hiện tại, thư viện 160 từ gốc/312 mục so sánh, icon và service worker.
+- public/: giao diện PWA hiện tại, thư viện 260 từ gốc và 312 mục so sánh mở rộng, icon và service worker.
 - public/backup.js: quản lý bảo vệ lưu trữ, sao lưu/khôi phục và trạng thái.
 - app/route.ts: phục vụ tài liệu HTML gốc, giữ nguyên URL và không tải React vào giao diện học.
 - app/api/backup/route.ts, lib/backup-api.ts: API sao lưu riêng từng người dùng; danh tính do Sites xác thực.
@@ -67,7 +67,7 @@ Tài liệu: https://webkit.org/tracking-prevention/ và https://webkit.org/blog
 `npm test`: API chạy trên D1/SQLite thật qua Miniflare và bộ điều khiển sao lưu chạy với các lỗi mạng, xóa dữ liệu local, xung đột thiết bị, đổi tài khoản, khôi phục lịch sử và yêu cầu lưu trữ. `npx tsc --noEmit`: kiểm tra TypeScript.
 
 
-Kiểm tra cú pháp JS; 160 mục dữ liệu/ID/IPA/fields; logic lịch ôn, XP và kiểm tra bản sao; các tình huống cache/offline service worker độc lập; luồng thẻ học 10 từ và quiz 10 câu qua trình duyệt; tìm kiếm/lưu từ/tải lại giữ tiến độ; bố cục PC và kích thước iPhone.
+Kiểm tra cú pháp JS; dữ liệu của 160 mục tổng quát và 100 mục TOEIC (ID, phiên âm và các trường nội dung); logic lịch ôn, XP và kiểm tra bản sao; các tình huống cache/offline service worker độc lập; luồng thẻ học 10 từ và quiz 10 câu qua trình duyệt; tìm kiếm/lưu từ/tải lại giữ tiến độ; bố cục PC và kích thước iPhone.
 
 Cài thực tế trên iPhone và chất lượng giọng đọc từng thiết bị cần kiểm tra trên thiết bị đó. Đây là PWA cài từ trình duyệt, không phải gói App Store/EXE native.
 
@@ -75,9 +75,9 @@ Cài thực tế trên iPhone và chất lượng giọng đọc từng thiết 
 
 Mỗi mục trong synonyms.js có word, level (CEFR tham khảo), register, meaning, distinction (so với nghĩa của từ gốc), pattern, example, translation và relation. relation=near là gần nghĩa theo ngữ cảnh, paraphrase là cách diễn đạt tương đương, related là có liên quan nhưng khác nghĩa. Không xem mọi mục là từ đồng nghĩa thay thế được trực tiếp. Với thuật ngữ chuyên ngành, giới hạn nghĩa được ghi rõ.
 
-Các cách diễn đạt mở rộng hiện là tài liệu so sánh gắn với từ gốc, chưa có lịch ôn/XP riêng. Dữ liệu tiến độ và ID 160 từ gốc vẫn giữ nguyên khi cập nhật cùng domain. Khi thêm bộ so sánh mới, sửa synonyms.js và tăng phiên bản sw.js trước khi deploy.
+Các cách diễn đạt mở rộng hiện là tài liệu so sánh gắn với từ gốc, chưa có lịch ôn/XP riêng. Dữ liệu tiến độ và ID của 160 từ thuộc bộ chủ đề tổng quát vẫn giữ nguyên khi cập nhật cùng domain. Khi thêm bộ so sánh mới, sửa synonyms.js và tăng phiên bản sw.js trước khi deploy.
 
-Bản mở rộng hiện có 312 mục so sánh, 307 cách diễn đạt khác nhau gắn với đủ 160 từ gốc. Số này gồm gần nghĩa, cách diễn đạt và khái niệm liên quan đã được gắn nhãn riêng.
+Bản mở rộng hiện có 312 mục so sánh, 307 cách diễn đạt khác nhau gắn với 160 từ thuộc bộ chủ đề tổng quát. Số này gồm gần nghĩa, cách diễn đạt và khái niệm liên quan đã được gắn nhãn riêng.
 
 Nguồn tra cứu để đối chiếu các trường hợp khó (các ví dụ và giải thích trong app được biên soạn riêng; nhãn CEFR không phải trích phân loại chính thức của các nguồn):
 - https://dictionary.cambridge.org/dictionary/english/empathy
@@ -98,7 +98,7 @@ Trong Cài đặt hoặc Tiến độ, nút Đăng xuất xuất hiện khi đã
 
 public/toeic.js thêm 5 nhóm, mỗi nhóm 20 từ có ID riêng ổn định: toeic-400 … toeic-800. Mỗi mục có phiên âm UK, nghĩa, từ loại, ví dụ tự biên soạn Anh–Việt, nhãn CEFR tham khảo, collocation, usage, context và toeicTarget. Các mốc là mục tiêu tổng điểm Listening & Reading do Lexi sắp xếp để học tích lũy, không phải danh sách từ tần suất cao có thống kê, nhãn chính thức ETS, phép đổi CEFR hay dự đoán điểm. Bài quiz là luyện từ vựng, không mô phỏng đủ đề thi.
 
-Mở #toeic từ thanh bên hoặc thẻ trên Hôm nay/Chủ đề. Từ điển có bộ lọc 400/500/600/700/800 và tìm cụm thường đi cùng. Thẻ đã lật hiển thị ghi chú cách dùng. Tất cả từ mới tham gia SRS/XP và sao lưu như từ cũ. lib/lexi-catalog.json được cập nhật đủ 260 ID; backend chặn client cache cũ ghi mất tiến độ TOEIC bằng catalogVersion. Không thay đổi ID hoặc nội dung của 160 từ gốc và 312 mục so sánh.
+Mở #toeic từ thanh bên hoặc thẻ trên Hôm nay/Chủ đề. Từ điển có bộ lọc 400/500/600/700/800 và tìm cụm thường đi cùng. Thẻ đã lật hiển thị ghi chú cách dùng. Tất cả từ mới tham gia SRS/XP và sao lưu như từ cũ. lib/lexi-catalog.json được cập nhật đủ 260 ID; backend chặn client cache cũ ghi mất tiến độ TOEIC bằng catalogVersion. Không thay đổi ID hoặc nội dung của 160 từ thuộc bộ chủ đề tổng quát và 312 mục so sánh.
 
 Ngữ cảnh đối chiếu: https://www.ets.org/pdfs/toeic/toeic-listening-reading-test-examinee-handbook.pdf (văn phòng, nhân sự, mua hàng, tài chính, vận chuyển, hợp đồng). Mô tả năng lực tham khảo: https://www.ets.org/pdfs/toeic/toeic-listening-reading-score-descriptors.pdf (điểm từng kỹ năng, không phải tổng điểm hay danh sách từ).
 
