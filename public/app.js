@@ -343,7 +343,7 @@
   }
   function focusLesson(){
     if(!lesson.open||!session)return;
-    const selector=session.index>=session.queue.length?'[data-action="finish"]':session.mode==='quiz'?(session.answered?'[data-action="next"]':'[data-choice]'):session.flipped?'[data-grade]':'[data-action="flip"]';
+    const selector=session.index>=session.queue.length?'[data-action="finish"]':session.mode==='quiz'?(session.answered?'#answer-verdict':'[data-choice]'):session.flipped?'[data-grade]':'[data-action="flip"]';
     $(selector,lesson)?.focus({preventScroll:true});
   }
   function makeQuestion(id,index) {
@@ -356,6 +356,60 @@
     for(const other of distractors){if(unique.has(value(other)))continue;unique.add(value(other));options.push(other.id);if(options.length===4)break;}
     return {context,prompt:context?w.example.replace(match,'________'):w.word,options:shuffle(options)};
   }
+
+  function quizAnswerReview(question, target, selectedId) {
+    const hints = window.LEXI_QUIZ_HINTS || {};
+    const correctNumber = question.options.indexOf(target.id) + 1;
+    const verdict = selectedId === target.id ? 'Chính xác!' : 'Chưa đúng.';
+    const rows = question.options.map((id, index) => {
+      const option = byId.get(id);
+      const correct = id === target.id;
+      const selected = id === selectedId;
+      const status = correct ? 'Đáp án đúng' : 'Chưa phù hợp';
+      const marker = selected ? status + ' · Bạn đã chọn' : status;
+      const clue = esc(hints[id] || option.meaning);
+      let reason;
+      if (correct) {
+        reason = 'Trong ví dụ của bài, từ này diễn tả ' + clue + '.';
+      } else {
+        const intended = question.context ? 'Câu gốc cần ý' : 'Từ đang hỏi có nghĩa là';
+        reason = intended + ' “' + esc(target.meaning) + '”. Lựa chọn này lại nói đến ' + clue + '.';
+      }
+      const style = correct ? ' is-correct' : selected ? ' is-selected' : '';
+      return '<li class="answer-note' + style + '"><div class="answer-note-head">' +
+        '<strong><span class="answer-number">' + (index + 1) + '.</span> <span lang="en">' + esc(option.word) + '</span></strong>' +
+        '<span class="answer-status">' + marker + '</span></div>' +
+        '<p class="answer-gloss">' + esc(option.meaning) + ' <small>· ' + esc(option.pos) + '</small></p>' +
+        '<p class="answer-reason">' + reason + '</p></li>';
+    });
+    return '<section class="answer-review" aria-labelledby="answer-verdict">' +
+      '<h4 id="answer-verdict" tabindex="-1">' + verdict + ' Đáp án ' + correctNumber + ' · <span lang="en">' + esc(target.word) + '</span></h4>' +
+      '<div class="answer-example"><p lang="en">' + esc(target.example) + '</p><p>' + esc(target.translation) + '</p></div>' +
+      '<ol class="answer-notes" aria-label="Giải thích bốn lựa chọn">' + rows.join('') + '</ol>' +
+      renderUsage(target, false, true) + '</section>';
+  }
+
+  function quizContent(question, target, state) {
+    const prompt = question.context ? 'Chọn từ phù hợp với ngữ cảnh' : 'Chọn nghĩa đúng của từ';
+    const heading = '<p class="quiz-prompt">' + prompt + '</p><h3 class="' +
+      (question.context ? 'quiz-context' : 'quiz-title') + '" lang="en">' + esc(question.prompt) + '</h3>';
+    if (state.answered) {
+      const nextLabel = state.index === state.queue.length - 1 ? 'Xem kết quả' : 'Câu tiếp theo';
+      return heading + quizAnswerReview(question, target, state.choice) +
+        '<div class="lesson-bottom"><button class="btn btn-primary" data-action="next">' + nextLabel +
+        ' ' + icon('arrow') + '</button></div><p class="session-foot">Enter để tiếp tục</p>';
+    }
+    const choices = question.options.map((id, index) => {
+      const option = byId.get(id);
+      return '<button class="choice" data-choice="' + esc(id) + '"><b>' + (index + 1) +
+        '</b><span' + (question.context ? ' lang="en"' : '') + '>' + esc(question.context ? option.word : option.meaning) +
+        '</span></button>';
+    });
+    const translation = question.context ? '<p class="quiz-translation">' + esc(target.translation) + '</p>' : '';
+    return heading + translation + '<div class="choices">' + choices.join('') +
+      '</div><p class="session-foot">Phím 1–4 để chọn đáp án</p>';
+  }
+
   function renderSession() {
     if(!session)return;
     const s=session,t=topicById.get(s.topicId);
@@ -364,12 +418,12 @@
     const head='<div class="lesson-head"><span class="topic-emoji" style="--tint:'+(t?.color||'#eee9ff')+'">'+(t?.emoji||'🌱')+'</span><div class="lesson-head-text"><h2 id="lesson-title">'+(s.mode==='quiz'?'Luyện tập':s.mode==='review'?'Ôn tập đúng lúc':'Học bằng thẻ')+(t?' · '+esc(t.title):'')+'</h2><p>Từ '+(s.index+1)+' / '+s.queue.length+' · '+esc(w.level)+'</p></div><button class="icon-button" data-action="close-lesson" aria-label="Đóng bài học">'+icon('close')+'</button></div><div class="lesson-track"><i style="width:'+(s.index/s.queue.length*100)+'%"></i></div>';
     let content;
     if(s.mode==='quiz') {
-      const q=s.questions[s.index];
-      content='<p class="quiz-prompt">'+(q.context?'Chọn từ phù hợp với ngữ cảnh':'Chọn nghĩa đúng của từ')+'</p><h3 class="'+(q.context?'quiz-context':'quiz-title')+'" lang="en">'+esc(q.prompt)+'</h3><div class="choices">'+q.options.map((id,i)=>{const correct=s.answered&&id===w.id,wrong=s.answered&&s.choice===id&&id!==w.id;return '<button class="choice '+(correct?'correct':wrong?'wrong':'')+'" data-choice="'+id+'" '+(s.answered?'disabled':'')+'><b>'+(i+1)+'</b><span>'+esc(q.context?byId.get(id).word:byId.get(id).meaning)+'</span></button>';}).join('')+'</div>'+(s.answered?'<div class="quiz-feedback"><strong>'+(s.choice===w.id?'Chính xác! ✨':'Chưa đúng — mình cùng nhớ lại nhé.')+'</strong>'+esc(w.word)+' · '+esc(w.meaning)+'<p style="margin-top:5px" lang="en">'+esc(w.example)+'</p><p style="margin-top:4px">'+esc(w.translation)+'</p>'+renderUsage(w,false,true)+'</div><div class="lesson-bottom"><button class="btn btn-primary" data-action="next">'+(s.index===s.queue.length-1?'Xem kết quả':'Câu tiếp theo')+' '+icon('arrow')+'</button></div>':'')+'<p class="session-foot">Phím 1–4 để chọn · Enter để tiếp tục</p>';
+      content=quizContent(s.questions[s.index],w,s);
     } else {
       content='<div class="flashcard"><div class="flash-top"><span class="level-tag">'+esc(w.level)+' · '+esc(w.pos)+'</span>'+favoriteButton(w.id)+'</div><h3 lang="en">'+esc(w.word)+'</h3><p class="ipa">'+esc(w.ipa)+'</p>'+speakerButton(w.id)+(s.flipped?'<div class="card-meaning">'+esc(w.meaning)+'</div>'+imagePreview(w)+'<div class="example-block"><p lang="en">'+esc(w.example)+'</p><p>'+esc(w.translation)+'</p></div>'+renderUsage(w,false,true)+renderSynonymPanel(w):'<p class="flip-hint">Lật thẻ để xem nghĩa, từ gần nghĩa và cách dùng.</p>')+'</div><div class="lesson-bottom">'+(s.flipped?'<div class="grade-actions"><button class="grade hard" data-grade="hard">Chưa nhớ <small>1 · Ôn sau 10 phút</small></button><button class="grade ok" data-grade="ok">Cần ôn thêm <small>2 · Ôn sau 1 ngày</small></button><button class="grade good" data-grade="good">Đã nhớ <small>3 · Ôn sau '+Math.min(60,Math.max(3,(state.progress[w.id]?.interval||0)*2))+' ngày</small></button></div>':'<button class="btn btn-primary" data-action="flip">Xem nghĩa '+icon('arrow')+'</button>')+'</div><p class="session-foot">Space để lật thẻ · 1 / 2 / 3 để đánh giá khi đã lật</p>';
     }
     lesson.innerHTML='<div class="lesson-shell">'+head+content+'</div>';
+    if(s.mode==='quiz')lesson.scrollTop=0;
     hydrateSynonyms(lesson);
     focusLesson();
   }

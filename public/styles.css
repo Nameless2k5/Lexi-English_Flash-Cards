@@ -66,3 +66,29 @@ body{font-size:1rem;line-height:1.6}p{line-height:1.7}button,input,select,textar
 @media(max-width:650px){.hero-copy{max-width:100%}.hero-art{display:none}.hero{padding:24px;min-height:0}.hero p{max-width:none}.page-head h1{font-size:1.75rem}.topic-grid{grid-template-columns:minmax(0,1fr)}.grade{padding:12px 6px;overflow-wrap:anywhere}.grade small{font-size:.8125rem}.settings-shell{padding:20px}.week-days{gap:4px}.topbar{gap:10px}.topbar-title{font-size:.8125rem}.profile-aside{grid-template-columns:minmax(0,1fr)}.avatar-crop-note{display:block}}
 
 .workspace-label{font-size:.8125rem;letter-spacing:0;white-space:nowrap;line-height:1.6;max-width:100%}.sidebar{overflow-x:hidden}.backup-banner-wrap{min-height:0;padding-top:0;padding-bottom:0}.backup-banner-wrap .backup-banner{max-width:none;width:100%;margin:0 0 14px}.backup-banner>div{min-width:0;overflow-wrap:anywhere}
+
+/* Quiz feedback stays in the same order as the original choices. */
+.quiz-translation {
+  color: var(--muted);
+  font-size: 1rem;
+  margin: -.5rem auto 1rem;
+  text-align: center;
+  line-height: 1.55;
+}
+.answer-review { color: var(--ink); }
+.answer-review h4 { font-size: 1.1rem; margin: .8rem 0 .5rem; }
+.answer-example { background: var(--lavender); border-radius: 12px; padding: .75rem 1rem; }
+.answer-example p + p { margin-top: .3rem; }
+.answer-notes { list-style: none; display: grid; gap: .65rem; padding: 0; margin: .9rem 0; }
+.answer-note { border: 1px solid var(--line); border-radius: 13px; padding: .75rem 1rem; background: var(--surface); }
+.answer-note-head { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: .25rem .6rem; }
+.answer-number, .answer-gloss small { color: var(--muted); }
+.answer-gloss { margin: .2rem 0; font-weight: 600; }
+.answer-reason { line-height: 1.55; }
+.answer-status { color: var(--muted); font-size: .85rem; }
+.answer-note.is-correct { border-inline-start: 4px solid #54813e; }
+.answer-note.is-correct .answer-status { color: #41652e; font-weight: 650; }
+.answer-note.is-selected { border-inline-start: 4px solid #bb613c; }
+.answer-note.is-selected .answer-status { color: #994726; font-weight: 650; }
+[data-theme=dark] .answer-note.is-correct .answer-status { color: #c6df9f; }
+[data-theme=dark] .answer-note.is-selected .answer-status { color: #ffc4a6; }

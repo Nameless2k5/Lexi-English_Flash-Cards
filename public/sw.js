@@ -1,9 +1,9 @@
 /* Lexi PWA cache: bump CACHE_NAME when publishing a new shell/data version. */
 'use strict';
-const CACHE_NAME = 'lexi-v23-word-images';
+const CACHE_NAME = 'lexi-v24-quiz-explanations';
 const BASE_URL = new URL('./', self.location.href);
 const SHELL_PATHS = [
-  './', './index.html', './styles.css', './word-images.css', './word-images-data.js', './theme.css', './theme.js', './app.js', './data.js', './toeic.js', './synonyms.js', './profile.js', './avatar-crop.js', './backup.js',
+  './', './index.html', './styles.css', './word-images.css', './word-images-data.js', './theme.css', './theme.js', './app.js', './quiz-hints.js', './data.js', './toeic.js', './synonyms.js', './profile.js', './avatar-crop.js', './backup.js',
   './manifest.webmanifest', './icon-192.png', './icon-512.png',
   './apple-touch-icon.png', './favicon.svg'
 ];
