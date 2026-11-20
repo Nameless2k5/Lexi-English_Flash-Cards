@@ -1,6 +1,19 @@
 /* Lexi: dependency-free, local-first vocabulary learning. */
 (() => {
   'use strict';
+  const workspaceLabel=document.querySelector('.workspace-label');
+  function fitWorkspaceLabel(){
+    if(!workspaceLabel||!workspaceLabel.clientWidth)return;
+    workspaceLabel.style.fontSize='';
+    const range=document.createRange();range.selectNodeContents(workspaceLabel);
+    const width=range.getBoundingClientRect().width;
+    const size=parseFloat(getComputedStyle(workspaceLabel).fontSize);
+    if(width>workspaceLabel.clientWidth-2)workspaceLabel.style.fontSize=(size*(workspaceLabel.clientWidth-2)/width)+'px';
+  }
+  fitWorkspaceLabel();
+  window.addEventListener('resize',fitWorkspaceLabel,{passive:true});
+  document.fonts?.ready.then(fitWorkspaceLabel);
+
   const $ = (s,root=document) => root.querySelector(s);
   const $$ = (s,root=document) => [...root.querySelectorAll(s)];
   const esc = s => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
