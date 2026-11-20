@@ -1,0 +1,46 @@
+/* Keep classroom examples readable without making the word list a wall of pictures. */
+.word-visual {
+  margin: 0 1.125rem 1rem;
+  padding: .7rem;
+  border-radius: 1rem;
+  background: var(--bg);
+  display: grid;
+  grid-template-columns: minmax(0, 20rem) minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(.75rem, 2vw, 1.5rem);
+}
+.visual-thumb {
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: .7rem;
+  background: var(--surface);
+  overflow: hidden;
+  padding: 0;
+  width: 100%;
+  cursor: zoom-in;
+}
+.visual-thumb:hover, .visual-thumb:focus-visible { outline: 2px solid var(--purple); outline-offset: 2px }
+.visual-thumb img { display: block; width: 100%; height: auto; aspect-ratio: 2.7; object-fit: contain }
+.word-visual figcaption, .visual-dialog-body figcaption { font-size: 1rem; line-height: 1.55; color: var(--ink); overflow-wrap: anywhere }
+.word-visual figcaption { max-width: 47ch }
+.flashcard .word-visual { width: 100%; max-width: 26rem; grid-template-columns: minmax(0, 1fr); gap: .65rem; margin: .9rem auto 0 }
+.flashcard .word-visual figcaption { max-width: none }
+#word-image-dialog { color: var(--ink); background: var(--surface); width: min(40rem, calc(100% - 1.5rem)); max-height: 90dvh; overflow: auto }
+.visual-dialog-head { position: sticky; top: 0; background: var(--surface); z-index: 1; display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; border-bottom: 1px solid var(--line); padding: 1rem 1.4rem }
+.visual-dialog-head h2 { font-size: clamp(1.4rem, 3vw, 2rem); line-height: 1.2; overflow-wrap: anywhere }
+.visual-dialog-head p { color: var(--muted); margin: .3rem 0 0 }
+.visual-dialog-body { padding: 1.2rem 1.4rem }
+.visual-dialog-body figure { margin: 0 0 1.3rem }
+.visual-dialog-body img { display: block; width: 100%; max-height: 50vh; object-fit: contain; margin: 0 auto .65rem; border-radius: .6rem; background: var(--bg) }
+.visual-credits { font-size: .875rem; border-top: 1px solid var(--line); padding-top: .8rem; overflow-wrap: anywhere }
+.visual-credits summary { cursor: pointer; color: var(--purple) }
+.visual-credits p { margin-top: .5rem }
+.visual-credits a { color: var(--purple); text-decoration: underline }
+.visual-unavailable { padding: .9rem; color: var(--muted); font-size: .875rem }
+@media (max-width: 700px) {
+  .word-visual { grid-template-columns: minmax(0, 1fr); gap: .5rem; margin-inline: .75rem; padding: .65rem }
+  .word-visual .visual-thumb { max-width: 28rem; justify-self: center }
+  .word-visual figcaption { max-width: none }
+  .visual-dialog-body { padding: 1rem }
+}

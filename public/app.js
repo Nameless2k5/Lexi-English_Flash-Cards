@@ -231,9 +231,62 @@
   document.addEventListener('toggle',e=>{if(e.target.matches?.('details[data-synonyms]'))populateSynonyms(e.target);},true);
   function topicResults() {const q=normalize(filters.query);return topics.filter(t=>(filters.level==='all'||t.words.some(w=>w.level===filters.level))&&normalize(t.title+' '+t.subtitle+' '+t.description).includes(q));}
   function renderTopics() {main.innerHTML=pageHead('FIND YOUR NEXT INTEREST','Một chủ đề, nhiều điều hay.',''+topics.length+' chủ đề · '+words.length+' từ và cụm từ A2–C1 · Học theo ngữ cảnh')+toeicCallout()+filtersMarkup()+'<div id="results" class="topic-grid"></div>';updateResults('topics');}
+  const imageDialog = document.getElementById('word-image-dialog');
+  const imageCatalog = window.LEXI_WORD_IMAGES || {};
+
+  function illustrationPath(id, photo) {
+    return (photo ? 'word-photos/' : 'word-scenes/') + encodeURIComponent(id) + '.webp';
+  }
+
+  function imagePreview(word) {
+    const entry = imageCatalog[word.id];
+    if (!entry) return '';
+    const caption = entry.photo?.caption || entry.caption;
+    const alt = entry.photo ? '' : entry.labels.join(' · ');
+    return '<figure class="word-visual">' +
+      '<button type="button" class="visual-thumb" data-open-visual="' + esc(word.id) +
+        '" aria-label="Xem hình minh họa cho ' + esc(word.word) + '">' +
+        '<img loading="lazy" decoding="async" src="' + illustrationPath(word.id, entry.photo) +
+          '" alt="' + esc(alt) + '"></button>' +
+      '<figcaption>' + esc(caption) + '</figcaption></figure>';
+  }
+
+  function showWordImage(word) {
+    const entry = word && imageCatalog[word.id];
+    if (!entry) return;
+    const photo = entry.photo;
+    const sourceLink = (url, label) => '<a rel="noopener noreferrer" target="_blank" href="' + esc(url) + '">' + esc(label) + '</a>';
+    const scene = '<figure><img src="' + illustrationPath(word.id, false) + '" alt="' +
+      esc(entry.labels.join(' · ')) + '"><figcaption>' + esc(entry.caption) + '</figcaption></figure>';
+    let photoFigure = '';
+    if (photo) {
+      photoFigure = '<figure><img src="' + illustrationPath(word.id, true) + '" alt="' + esc(photo.caption) +
+        '"><figcaption>' + esc(photo.caption) + '</figcaption></figure>';
+    }
+    const credits = '<details class="visual-credits"><summary>Nguồn hình</summary>' +
+      (photo ? '<p>' + sourceLink(photo.source, 'Ảnh trên Wikimedia Commons') + ' · ' + esc(photo.author) +
+        ' · ' + sourceLink(photo.licenseUrl || photo.source, photo.license) + '. Lexi thu nhỏ và chuyển sang WebP.</p>' : '') +
+      '<p>Tranh tình huống do Lexi biên soạn từ hình của ' + sourceLink('https://openmoji.org/', 'OpenMoji') +
+      ', được phối lại và ghi nhãn theo giấy phép ' +
+      sourceLink('https://creativecommons.org/licenses/by-sa/4.0/', 'CC BY-SA 4.0') + '.</p></details>';
+    imageDialog.innerHTML = '<div class="visual-dialog-head"><div><h2 id="word-image-title" lang="en">' + esc(word.word) +
+      '</h2><p>' + esc(word.meaning) + '</p></div><button class="icon-button" type="button" data-close-visual aria-label="Đóng hình minh họa" autofocus>' +
+      icon('close') + '</button></div><div class="visual-dialog-body">' + photoFigure + scene + credits + '</div>';
+    imageDialog.showModal();
+  }
+
+  document.addEventListener('error', event => {
+    const image = event.target;
+    if (image.tagName !== 'IMG' || !image.closest('.word-visual, #word-image-dialog')) return;
+    const hint = document.createElement('span');
+    hint.className = 'visual-unavailable';
+    hint.textContent = 'Chưa tải được hình';
+    image.replaceWith(hint);
+  }, true);
+
   function wordRow(w,i=0,examples=false) {
     const p=state.progress[w.id];
-    return '<div class="word-item"><div class="word-row"><span class="word-number">'+String(i+1).padStart(2,'0')+'</span><div class="word-main"><div class="word-head"><strong lang="en">'+esc(w.word)+'</strong><small>'+esc(w.ipa)+'</small></div><p class="word-meaning">'+esc(w.meaning)+' <span style="color:#b0b8a8">· '+esc(w.pos)+'</span></p>'+(examples&&!w.toeicTarget?'<p class="word-example" lang="en">'+esc(w.example)+'</p>':'')+'</div><span class="word-status">'+(p?.interval>=7?'Đã vững':p?.seen?'Đang học':'Chưa học')+'</span><span class="level-tag">'+w.level+'</span>'+speakerButton(w.id)+favoriteButton(w.id)+'</div>'+renderUsage(w)+renderSynonymPanel(w)+'</div>';
+    return '<div class="word-item"><div class="word-row"><span class="word-number">'+String(i+1).padStart(2,'0')+'</span><div class="word-main"><div class="word-head"><strong lang="en">'+esc(w.word)+'</strong><small>'+esc(w.ipa)+'</small></div><p class="word-meaning">'+esc(w.meaning)+' <span style="color:#b0b8a8">· '+esc(w.pos)+'</span></p>'+(examples&&!w.toeicTarget?'<p class="word-example" lang="en">'+esc(w.example)+'</p>':'')+'</div><span class="word-status">'+(p?.interval>=7?'Đã vững':p?.seen?'Đang học':'Chưa học')+'</span><span class="level-tag">'+w.level+'</span>'+speakerButton(w.id)+favoriteButton(w.id)+'</div>'+imagePreview(w)+renderUsage(w)+renderSynonymPanel(w)+'</div>';
   }
   function dictionaryResults() {const q=normalize(filters.query);return words.filter(w=>(!filters.toeic||filters.toeic==='all'||(filters.toeic==='toeic'?!!w.toeicTarget:String(w.toeicTarget)===filters.toeic))&&(filters.level==='all'||w.level===filters.level)&&(!filters.saved||isSaved(w.id))&&dictionaryIndex.get(w.id).includes(q));}
   function renderDictionary() {main.innerHTML=pageHead('YOUR WORD COLLECTION','Từ điển của bạn','Tra từ gốc hoặc từ gần nghĩa, so sánh cách dùng và lưu từ bạn muốn nhớ.')+'<div class="dict-summary"><span><strong>'+words.length+'</strong> từ gốc</span><span><strong>'+learned().length+'</strong> đã học</span><span><strong>'+state.favorites.length+'</strong> đã lưu</span><span><strong>'+Object.values(synonymData).reduce((n,a)=>n+a.length,0)+'</strong> mục so sánh</span></div>'+filtersMarkup(true)+toeicFilters()+'<div id="results"></div>';updateResults('dictionary');}
@@ -314,7 +367,7 @@
       const q=s.questions[s.index];
       content='<p class="quiz-prompt">'+(q.context?'Chọn từ phù hợp với ngữ cảnh':'Chọn nghĩa đúng của từ')+'</p><h3 class="'+(q.context?'quiz-context':'quiz-title')+'" lang="en">'+esc(q.prompt)+'</h3><div class="choices">'+q.options.map((id,i)=>{const correct=s.answered&&id===w.id,wrong=s.answered&&s.choice===id&&id!==w.id;return '<button class="choice '+(correct?'correct':wrong?'wrong':'')+'" data-choice="'+id+'" '+(s.answered?'disabled':'')+'><b>'+(i+1)+'</b><span>'+esc(q.context?byId.get(id).word:byId.get(id).meaning)+'</span></button>';}).join('')+'</div>'+(s.answered?'<div class="quiz-feedback"><strong>'+(s.choice===w.id?'Chính xác! ✨':'Chưa đúng — mình cùng nhớ lại nhé.')+'</strong>'+esc(w.word)+' · '+esc(w.meaning)+'<p style="margin-top:5px" lang="en">'+esc(w.example)+'</p><p style="margin-top:4px">'+esc(w.translation)+'</p>'+renderUsage(w,false,true)+'</div><div class="lesson-bottom"><button class="btn btn-primary" data-action="next">'+(s.index===s.queue.length-1?'Xem kết quả':'Câu tiếp theo')+' '+icon('arrow')+'</button></div>':'')+'<p class="session-foot">Phím 1–4 để chọn · Enter để tiếp tục</p>';
     } else {
-      content='<div class="flashcard"><div class="flash-top"><span class="level-tag">'+esc(w.level)+' · '+esc(w.pos)+'</span>'+favoriteButton(w.id)+'</div><h3 lang="en">'+esc(w.word)+'</h3><p class="ipa">'+esc(w.ipa)+'</p>'+speakerButton(w.id)+(s.flipped?'<div class="card-meaning">'+esc(w.meaning)+'</div><div class="example-block"><p lang="en">'+esc(w.example)+'</p><p>'+esc(w.translation)+'</p></div>'+renderUsage(w,false,true)+renderSynonymPanel(w):'<p class="flip-hint">Lật thẻ để xem nghĩa, từ gần nghĩa và cách dùng.</p>')+'</div><div class="lesson-bottom">'+(s.flipped?'<div class="grade-actions"><button class="grade hard" data-grade="hard">Chưa nhớ <small>1 · Ôn sau 10 phút</small></button><button class="grade ok" data-grade="ok">Cần ôn thêm <small>2 · Ôn sau 1 ngày</small></button><button class="grade good" data-grade="good">Đã nhớ <small>3 · Ôn sau '+Math.min(60,Math.max(3,(state.progress[w.id]?.interval||0)*2))+' ngày</small></button></div>':'<button class="btn btn-primary" data-action="flip">Xem nghĩa '+icon('arrow')+'</button>')+'</div><p class="session-foot">Space để lật thẻ · 1 / 2 / 3 để đánh giá khi đã lật</p>';
+      content='<div class="flashcard"><div class="flash-top"><span class="level-tag">'+esc(w.level)+' · '+esc(w.pos)+'</span>'+favoriteButton(w.id)+'</div><h3 lang="en">'+esc(w.word)+'</h3><p class="ipa">'+esc(w.ipa)+'</p>'+speakerButton(w.id)+(s.flipped?'<div class="card-meaning">'+esc(w.meaning)+'</div>'+imagePreview(w)+'<div class="example-block"><p lang="en">'+esc(w.example)+'</p><p>'+esc(w.translation)+'</p></div>'+renderUsage(w,false,true)+renderSynonymPanel(w):'<p class="flip-hint">Lật thẻ để xem nghĩa, từ gần nghĩa và cách dùng.</p>')+'</div><div class="lesson-bottom">'+(s.flipped?'<div class="grade-actions"><button class="grade hard" data-grade="hard">Chưa nhớ <small>1 · Ôn sau 10 phút</small></button><button class="grade ok" data-grade="ok">Cần ôn thêm <small>2 · Ôn sau 1 ngày</small></button><button class="grade good" data-grade="good">Đã nhớ <small>3 · Ôn sau '+Math.min(60,Math.max(3,(state.progress[w.id]?.interval||0)*2))+' ngày</small></button></div>':'<button class="btn btn-primary" data-action="flip">Xem nghĩa '+icon('arrow')+'</button>')+'</div><p class="session-foot">Space để lật thẻ · 1 / 2 / 3 để đánh giá khi đã lật</p>';
     }
     lesson.innerHTML='<div class="lesson-shell">'+head+content+'</div>';
     hydrateSynonyms(lesson);
@@ -359,6 +412,8 @@
     if(e.target.closest('a[data-backup-signout]')){if(!protection?.prepareSignOut())e.preventDefault();return;}
     const button=e.target.closest('button');if(!button)return;
     const d=button.dataset;
+    if(d.openVisual){showWordImage(byId.get(d.openVisual));return;}
+    if(button.hasAttribute('data-close-visual')){imageDialog.close();return;}
     if(d.themeChoice){changeTheme(d.themeChoice);return;}
     if(d.backup){
       if(!protection)return;
@@ -401,6 +456,7 @@
   });
   $('#global-search').addEventListener('submit',e=>{e.preventDefault();filters={level:'all',query:$('#search-input').value.trim(),saved:false};if(route().name==='dictionary')renderDictionary();else location.hash='dictionary';$('#search-input').blur();});
   document.addEventListener('keydown',e=>{
+    if(imageDialog.open)return;
     if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();$('#search-input').focus();return;}
     if(/INPUT|TEXTAREA|SELECT|SUMMARY/.test(e.target.tagName))return;
     if(!session||!lesson.open)return;
@@ -413,7 +469,7 @@
       if(session.flipped&&/^[1-3]$/.test(e.key)){e.preventDefault();grade(['hard','ok','good'][Number(e.key)-1]);}
     }
   });
-  window.addEventListener('hashchange',()=>{window.LEXI_AVATAR_CROP?.cancel();profileImageRequest++;profilePhotoBusy=false;filters={level:'all',query:route().name==='dictionary'?filters.query:'',saved:false};render();window.scrollTo({top:0});});
+  window.addEventListener('hashchange',()=>{if(imageDialog.open)imageDialog.close();window.LEXI_AVATAR_CROP?.cancel();profileImageRequest++;profilePhotoBusy=false;filters={level:'all',query:route().name==='dictionary'?filters.query:'',saved:false};render();window.scrollTo({top:0});});
   window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e;});
   window.addEventListener('online',()=>updateNav(route().name));window.addEventListener('offline',()=>updateNav(route().name));
   function offlineStatus(message){

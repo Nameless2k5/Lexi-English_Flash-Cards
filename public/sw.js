@@ -1,9 +1,9 @@
 /* Lexi PWA cache: bump CACHE_NAME when publishing a new shell/data version. */
 'use strict';
-const CACHE_NAME = 'lexi-v22-fit-label';
+const CACHE_NAME = 'lexi-v23-word-images';
 const BASE_URL = new URL('./', self.location.href);
 const SHELL_PATHS = [
-  './', './index.html', './styles.css', './theme.css', './theme.js', './app.js', './data.js', './toeic.js', './synonyms.js', './profile.js', './avatar-crop.js', './backup.js',
+  './', './index.html', './styles.css', './word-images.css', './word-images-data.js', './theme.css', './theme.js', './app.js', './data.js', './toeic.js', './synonyms.js', './profile.js', './avatar-crop.js', './backup.js',
   './manifest.webmanifest', './icon-192.png', './icon-512.png',
   './apple-touch-icon.png', './favicon.svg'
 ];
@@ -27,6 +27,7 @@ async function validResponse(response, assetURL) {
   if (path.endsWith('.js')) return /(?:javascript|ecmascript)/.test(contentType);
   if (path.endsWith('.css')) return contentType.includes('text/css');
   if (path.endsWith('.webmanifest')) return contentType.includes('json');
+  if (path.endsWith('.webp')) return contentType.includes('image/webp');
   if (path.endsWith('.png')) return contentType.includes('image/png');
   if (path.endsWith('.svg')) return contentType.includes('image/svg+xml');
   return false;
@@ -82,7 +83,9 @@ async function localAssetResponse(request, assetURL) {
   const cached = await cache.match(assetURL);
   if (cached) return cached;
   const response = await fetch(request);
-  if (await validResponse(response, assetURL)) await cache.put(assetURL, response.clone());
+  if (await validResponse(response, assetURL)) {
+    try { await cache.put(assetURL, response.clone()); } catch { /* Show the downloaded asset even if storage is full. */ }
+  }
   return response;
 }
 
@@ -96,6 +99,11 @@ self.addEventListener('fetch', event => {
   // The cached shell is static and contains no account identity or progress.
   if (request.mode === 'navigate') {
     if (NAVIGATION_PATHS.has(url.pathname)) event.respondWith(navigationResponse(request));
+    return;
+  }
+  // Artwork is optional and cached as it is viewed; it never blocks offline study.
+  if (request.destination === 'image' && /^\/(?:word-scenes|word-photos)\/[a-z0-9-]+\.webp$/.test(url.pathname) && !url.search) {
+    event.respondWith(localAssetResponse(request, url.href));
     return;
   }
   const assetURL = ASSET_BY_PATH.get(url.pathname);
