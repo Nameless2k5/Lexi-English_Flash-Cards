@@ -1,6 +1,6 @@
 /* Lexi PWA cache: bump CACHE_NAME when publishing a new shell/data version. */
 'use strict';
-const CACHE_NAME = 'lexi-v20-readable-type';
+const CACHE_NAME = 'lexi-v21-aligned-banner';
 const BASE_URL = new URL('./', self.location.href);
 const SHELL_PATHS = [
   './', './index.html', './styles.css', './theme.css', './theme.js', './app.js', './data.js', './toeic.js', './synonyms.js', './profile.js', './avatar-crop.js', './backup.js',
