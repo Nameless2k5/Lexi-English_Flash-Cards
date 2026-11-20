@@ -2,7 +2,7 @@
 :root{color-scheme:light}
 .theme-toggle{width:42px;height:42px;flex:none;color:var(--purple);border-radius:12px}
 .theme-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:13px 0}
-.theme-option{border:1px solid var(--line);background:var(--surface);border-radius:13px;min-height:74px;padding:12px 6px;display:grid;place-items:center;gap:7px;color:var(--muted);font-size:11px}
+.theme-option{border:1px solid var(--line);background:var(--surface);border-radius:13px;min-height:74px;padding:12px 6px;display:grid;place-items:center;gap:7px;color:var(--muted);font-size:0.875rem}
 .theme-option .icon{width:21px;height:21px}
 .theme-option[aria-pressed=true]{border-color:var(--purple);background:var(--lavender);color:var(--purple);box-shadow:0 0 0 1px var(--purple)}
 .theme-note{min-height:20px}
